@@ -631,6 +631,129 @@ describe('OrderDetail', () => {
     expect(screen.queryByText('19h02')).not.toBeInTheDocument();
   });
 
+  it('altera apenas o item da segunda rodada ao editar quantidade', async () => {
+    const onSaveItems = vi.fn();
+    render(
+      <OrderDetail
+        order={makeOrder({
+          status: 'open',
+          items: [
+            {
+              productUid: 'p-1',
+              name: 'Refri',
+              salePrice: 5,
+              costPrice: 2,
+              qty: 1,
+              batchId: 'b-1',
+              addedAt: new Date(2026, 8, 9, 19, 2).getTime(),
+            },
+            {
+              productUid: 'p-2',
+              name: 'Água',
+              salePrice: 3,
+              costPrice: 1,
+              qty: 1,
+              batchId: 'b-2',
+              addedAt: new Date(2026, 8, 9, 20, 15).getTime(),
+            },
+          ],
+        })}
+        onPrint={vi.fn()}
+        onMarkPaid={vi.fn()}
+        onCancel={vi.fn()}
+        onSaveItems={onSaveItems}
+      />,
+    );
+
+    expect(screen.getByText('19h02')).toBeInTheDocument();
+    expect(screen.getByText('20h15')).toBeInTheDocument();
+
+    await userEvent.click(
+      screen.getAllByRole('button', { name: 'Aumentar' })[1],
+    );
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Salvar alterações' }),
+    );
+
+    expect(onSaveItems).toHaveBeenCalledWith([
+      {
+        productUid: 'p-1',
+        name: 'Refri',
+        salePrice: 5,
+        costPrice: 2,
+        qty: 1,
+        batchId: 'b-1',
+        addedAt: new Date(2026, 8, 9, 19, 2).getTime(),
+      },
+      {
+        productUid: 'p-2',
+        name: 'Água',
+        salePrice: 3,
+        costPrice: 1,
+        qty: 2,
+        batchId: 'b-2',
+        addedAt: new Date(2026, 8, 9, 20, 15).getTime(),
+      },
+    ]);
+  });
+
+  it('remove apenas o item da segunda rodada', async () => {
+    const onSaveItems = vi.fn();
+    render(
+      <OrderDetail
+        order={makeOrder({
+          status: 'open',
+          items: [
+            {
+              productUid: 'p-1',
+              name: 'Refri',
+              salePrice: 5,
+              costPrice: 2,
+              qty: 1,
+              batchId: 'b-1',
+              addedAt: new Date(2026, 8, 9, 19, 2).getTime(),
+            },
+            {
+              productUid: 'p-2',
+              name: 'Água',
+              salePrice: 3,
+              costPrice: 1,
+              qty: 1,
+              batchId: 'b-2',
+              addedAt: new Date(2026, 8, 9, 20, 15).getTime(),
+            },
+          ],
+        })}
+        onPrint={vi.fn()}
+        onMarkPaid={vi.fn()}
+        onCancel={vi.fn()}
+        onSaveItems={onSaveItems}
+      />,
+    );
+
+    await userEvent.click(
+      screen.getAllByRole('button', { name: 'Diminuir' })[1],
+    );
+    expect(screen.getByText('Remover Água da comanda?')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Remover' }));
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Salvar alterações' }),
+    );
+
+    expect(onSaveItems).toHaveBeenCalledWith([
+      {
+        productUid: 'p-1',
+        name: 'Refri',
+        salePrice: 5,
+        costPrice: 2,
+        qty: 1,
+        batchId: 'b-1',
+        addedAt: new Date(2026, 8, 9, 19, 2).getTime(),
+      },
+    ]);
+  });
+
   it('não oferece edição em comanda fechada', () => {
     render(
       <OrderDetail
