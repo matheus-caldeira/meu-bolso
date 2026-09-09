@@ -39,7 +39,16 @@ function definitionWith(
 }
 
 function items(): OrderItem[] {
-  return [{ name: 'Café', salePrice: 5, costPrice: 2, qty: 2 }];
+  return [
+    {
+      name: 'Café',
+      salePrice: 5,
+      costPrice: 2,
+      qty: 2,
+      batchId: 'b-1',
+      addedAt: 1000,
+    },
+  ];
 }
 
 function makeUow(): { uow: UnitOfWork; created: NewOrder[] } {
@@ -174,6 +183,8 @@ const itemWithProduct = (over: Partial<OrderItem> = {}): OrderItem => ({
   costPrice: 8,
   qty: 2,
   ...over,
+  batchId: 'b-1',
+  addedAt: 1000,
 });
 
 describe('RegisterOrderUseCase', () => {
@@ -302,7 +313,14 @@ describe('RegisterOrderUseCase', () => {
         sessionUid: 's1',
         items: [
           itemWithProduct(),
-          { name: 'Sem estoque', salePrice: 3, costPrice: 1, qty: 1 },
+          {
+            name: 'Sem estoque',
+            salePrice: 3,
+            costPrice: 1,
+            qty: 1,
+            batchId: 'b-1',
+            addedAt: 1000,
+          },
         ],
       });
       expect(repositories.adjustments).toEqual([

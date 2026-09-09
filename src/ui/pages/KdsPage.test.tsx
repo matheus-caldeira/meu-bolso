@@ -47,6 +47,8 @@ function makeOrder(partial: Partial<Order>): Order {
         salePrice: 5,
         costPrice: 1,
         qty: 2,
+        batchId: 'b-1',
+        addedAt: 1000,
       },
     ],
     total: 10,

@@ -6,7 +6,11 @@ import {
   BusinessTypeNotSelectedError,
   UnknownBusinessTypeError,
 } from '../../domain/errors';
-import { calculateOrderTotal } from '../../domain/order/order.rules';
+import {
+  calculateOrderTotal,
+  stampBatch,
+} from '../../domain/order/order.rules';
+import { createUid } from '../../domain/shared/uid';
 import { getBusinessType } from '../../domain/business-type/registry';
 import type { OrderItem, OrderStatus } from '../../domain/order/order.entity';
 import type { Product } from '../../domain/product/product.entity';
@@ -114,6 +118,8 @@ export function usePdvController(sessionUid: string) {
           salePrice: product.salePrice,
           costPrice: product.costPrice,
           qty: 1,
+          batchId: '',
+          addedAt: 0,
         },
       ];
     });
@@ -175,16 +181,22 @@ export function usePdvController(sessionUid: string) {
       const orderTicket = edited ? ticket.trim() || '-' : undefined;
       const realAddress = address === '__new__' ? '' : address.trim();
 
-      const items: OrderItem[] = cart.map((item) => ({
-        productUid: item.productUid,
-        name: item.name,
-        salePrice: item.salePrice,
-        costPrice: item.costPrice,
-        qty: item.qty,
-        observation: item.observation,
-        customizations: item.customizations,
-        customizationTotal: item.customizationTotal,
-      }));
+      const items: OrderItem[] = stampBatch(
+        cart.map((item) => ({
+          productUid: item.productUid,
+          name: item.name,
+          salePrice: item.salePrice,
+          costPrice: item.costPrice,
+          qty: item.qty,
+          observation: item.observation,
+          customizations: item.customizations,
+          customizationTotal: item.customizationTotal,
+          batchId: item.batchId,
+          addedAt: item.addedAt,
+        })),
+        createUid(),
+        Date.now(),
+      );
 
       const result = await container.registerOrder(businessTypeId, definition, {
         sessionUid,

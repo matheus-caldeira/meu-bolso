@@ -85,7 +85,15 @@ function makeTab(overrides: Partial<Order> = {}): Order {
     businessTypeId: 'scout',
     sessionUid: 'session-1',
     items: [
-      { productUid: 'p-1', name: 'Refri', salePrice: 5, costPrice: 2, qty: 3 },
+      {
+        productUid: 'p-1',
+        name: 'Refri',
+        salePrice: 5,
+        costPrice: 2,
+        qty: 3,
+        batchId: 'b-1',
+        addedAt: 1000,
+      },
     ],
     total: 15,
     paymentMethod: null,
@@ -117,6 +125,8 @@ describe('UpdateTabItemsUseCase', () => {
           salePrice: 5,
           costPrice: 2,
           qty: 1,
+          batchId: 'b-1',
+          addedAt: 1000,
         },
       ],
     });
@@ -142,6 +152,8 @@ describe('UpdateTabItemsUseCase', () => {
           salePrice: 5,
           costPrice: 2,
           qty: 5,
+          batchId: 'b-1',
+          addedAt: 1000,
         },
       ],
     });

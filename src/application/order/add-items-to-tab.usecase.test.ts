@@ -103,7 +103,16 @@ describe('AddItemsToTabUseCase', () => {
 
     const result = await useCase.run({
       orderUid: 'tab-1',
-      items: [{ name: 'Refri', salePrice: 5, costPrice: 2, qty: 2 }],
+      items: [
+        {
+          name: 'Refri',
+          salePrice: 5,
+          costPrice: 2,
+          qty: 2,
+          batchId: 'b-1',
+          addedAt: 1000,
+        },
+      ],
     });
 
     expect(isRight(result)).toBe(true);
@@ -114,7 +123,16 @@ describe('AddItemsToTabUseCase', () => {
   it('agrupa com os itens que já estavam na comanda', async () => {
     const recorded: Recorded[] = [];
     const existing = makeTab({
-      items: [{ name: 'Refri', salePrice: 5, costPrice: 2, qty: 1 }],
+      items: [
+        {
+          name: 'Refri',
+          salePrice: 5,
+          costPrice: 2,
+          qty: 1,
+          batchId: 'b-1',
+          addedAt: 1000,
+        },
+      ],
       total: 5,
     });
     const useCase = new AddItemsToTabUseCase(
@@ -123,7 +141,16 @@ describe('AddItemsToTabUseCase', () => {
 
     await useCase.run({
       orderUid: 'tab-1',
-      items: [{ name: 'Refri', salePrice: 5, costPrice: 2, qty: 2 }],
+      items: [
+        {
+          name: 'Refri',
+          salePrice: 5,
+          costPrice: 2,
+          qty: 2,
+          batchId: 'b-1',
+          addedAt: 1000,
+        },
+      ],
     });
 
     expect(recorded[0].items).toHaveLength(1);
@@ -139,7 +166,16 @@ describe('AddItemsToTabUseCase', () => {
 
     const result = await useCase.run({
       orderUid: 'tab-1',
-      items: [{ name: 'Refri', salePrice: 5, costPrice: 2, qty: 1 }],
+      items: [
+        {
+          name: 'Refri',
+          salePrice: 5,
+          costPrice: 2,
+          qty: 1,
+          batchId: 'b-1',
+          addedAt: 1000,
+        },
+      ],
     });
 
     expect(isLeft(result)).toBe(true);
@@ -155,7 +191,16 @@ describe('AddItemsToTabUseCase', () => {
 
     const result = await useCase.run({
       orderUid: 'sumiu',
-      items: [{ name: 'Refri', salePrice: 5, costPrice: 2, qty: 1 }],
+      items: [
+        {
+          name: 'Refri',
+          salePrice: 5,
+          costPrice: 2,
+          qty: 1,
+          batchId: 'b-1',
+          addedAt: 1000,
+        },
+      ],
     });
 
     expect(isLeft(result)).toBe(true);
@@ -189,6 +234,8 @@ describe('AddItemsToTabUseCase', () => {
           salePrice: 5,
           costPrice: 2,
           qty: 1,
+          batchId: 'b-1',
+          addedAt: 1000,
         },
       ],
     });
@@ -210,7 +257,16 @@ describe('AddItemsToTabUseCase', () => {
 
     const result = await useCase.run({
       orderUid: 'tab-1',
-      items: [{ name: 'Refri', salePrice: 5, costPrice: 2, qty: 1 }],
+      items: [
+        {
+          name: 'Refri',
+          salePrice: 5,
+          costPrice: 2,
+          qty: 1,
+          batchId: 'b-1',
+          addedAt: 1000,
+        },
+      ],
     });
 
     expect(isLeft(result)).toBe(true);
@@ -226,7 +282,16 @@ describe('AddItemsToTabUseCase', () => {
 
     const result = await useCase.run({
       orderUid: 'tab-1',
-      items: [{ name: 'Refri', salePrice: 5, costPrice: 2, qty: 1 }],
+      items: [
+        {
+          name: 'Refri',
+          salePrice: 5,
+          costPrice: 2,
+          qty: 1,
+          batchId: 'b-1',
+          addedAt: 1000,
+        },
+      ],
     });
 
     expect(isLeft(result)).toBe(true);
@@ -246,7 +311,16 @@ describe('AddItemsToTabUseCase', () => {
 
     const result = await useCase.run({
       orderUid: 'tab-1',
-      items: [{ name: 'Refri', salePrice: 5, costPrice: 2, qty: 1 }],
+      items: [
+        {
+          name: 'Refri',
+          salePrice: 5,
+          costPrice: 2,
+          qty: 1,
+          batchId: 'b-1',
+          addedAt: 1000,
+        },
+      ],
     });
 
     expect(isLeft(result)).toBe(true);
@@ -265,10 +339,58 @@ describe('AddItemsToTabUseCase', () => {
 
     const result = await useCase.run({
       orderUid: 'tab-1',
-      items: [{ name: 'Refri', salePrice: 5, costPrice: 2, qty: 1 }],
+      items: [
+        {
+          name: 'Refri',
+          salePrice: 5,
+          costPrice: 2,
+          qty: 1,
+          batchId: 'b-1',
+          addedAt: 1000,
+        },
+      ],
     });
 
     expect(isLeft(result)).toBe(true);
     if (isLeft(result)) expect(result.left.code).toBe('TAB_NOT_FOUND');
+  });
+
+  it('mantém em linhas separadas itens iguais de rodadas diferentes', async () => {
+    const recorded: Recorded[] = [];
+    const tab = makeTab({
+      items: [
+        {
+          productUid: 'p-1',
+          name: 'Coca',
+          salePrice: 5,
+          costPrice: 2,
+          qty: 1,
+          batchId: 'b-1',
+          addedAt: 1000,
+        },
+      ],
+    });
+    const useCase = new AddItemsToTabUseCase(
+      makeUow(makeRepositories(tab, recorded)),
+    );
+
+    const result = await useCase.run({
+      orderUid: 'tab-1',
+      items: [
+        {
+          productUid: 'p-1',
+          name: 'Coca',
+          salePrice: 5,
+          costPrice: 2,
+          qty: 1,
+          batchId: 'b-2',
+          addedAt: 2000,
+        },
+      ],
+    });
+
+    expect(isRight(result)).toBe(true);
+    expect(recorded[0].items).toHaveLength(2);
+    expect(recorded[0].total).toBe(10);
   });
 });

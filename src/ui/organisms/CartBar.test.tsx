@@ -15,6 +15,8 @@ const item: CartItem = {
   salePrice: 5,
   costPrice: 2,
   qty: 3,
+  batchId: 'b-1',
+  addedAt: 1000,
 };
 
 const tab = { uid: 'tab-1', ticket: '0012' } as Order;

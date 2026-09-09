@@ -220,6 +220,8 @@ export function SettingsPage() {
           qty: 1,
           costPrice: 0,
           salePrice: 0,
+          batchId: 'test-batch',
+          addedAt: Date.now(),
         },
       ],
       total: 0,

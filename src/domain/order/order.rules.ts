@@ -178,6 +178,14 @@ export function mergeOrderItems(
   return merged;
 }
 
+export function stampBatch(
+  items: OrderItem[],
+  batchId: string,
+  addedAt: number,
+): OrderItem[] {
+  return items.map((item) => ({ ...item, batchId, addedAt }));
+}
+
 export interface OrderBatch {
   batchId: string;
   addedAt: number;

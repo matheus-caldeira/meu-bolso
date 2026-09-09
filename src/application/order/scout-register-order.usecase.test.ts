@@ -24,7 +24,14 @@ const scoutDef: BusinessTypeDefinition = {
 };
 
 const items: OrderItem[] = [
-  { name: 'Lanche', salePrice: 8, costPrice: 3, qty: 1 },
+  {
+    name: 'Lanche',
+    salePrice: 8,
+    costPrice: 3,
+    qty: 1,
+    batchId: 'b-1',
+    addedAt: 1000,
+  },
 ];
 
 function makeUow(): UnitOfWork {

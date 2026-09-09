@@ -24,7 +24,11 @@ import {
   useCustomizationLoader,
   type LoadedCustomizationGroup,
 } from '../hooks/useCustomizationLoader';
-import { findOpenTabForCustomer } from '../../domain/order/order.rules';
+import {
+  findOpenTabForCustomer,
+  stampBatch,
+} from '../../domain/order/order.rules';
+import { createUid } from '../../domain/shared/uid';
 import type { Customer } from '../../domain/customer/customer.entity';
 import type { Order } from '../../domain/order/order.entity';
 import type { Product } from '../../domain/product/product.entity';
@@ -98,7 +102,8 @@ function PdvSession({ sessionUid }: { sessionUid: string }) {
   }
 
   async function handleLaunchToTab(orderUid: string) {
-    const ok = await addItems(orderUid, controller.cart);
+    const items = stampBatch(controller.cart, createUid(), Date.now());
+    const ok = await addItems(orderUid, items);
     if (ok) {
       controller.clearCart();
       navigate('/orders');

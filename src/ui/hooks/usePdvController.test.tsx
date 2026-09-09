@@ -6,6 +6,7 @@ import { ToastProvider } from '../molecules/Toast';
 import { left, right } from '../../domain/shared/either';
 import { EmptyCartError } from '../../domain/errors';
 import { getBusinessType } from '../../domain/business-type/registry';
+import type { OrderItem } from '../../domain/order/order.entity';
 import type { Product } from '../../domain/product/product.entity';
 import type { BusinessTypeDefinition } from '../../domain/business-type/registry';
 import type { RegisterOrderInput } from '../../application/order/register-order.usecase';
@@ -117,6 +118,8 @@ describe('usePdvController', () => {
         costPrice: 10,
         qty: 1,
         customizationTotal: 5,
+        batchId: '',
+        addedAt: 0,
       }),
     );
     const cartId = result.current.cart[1].cartId;
@@ -234,6 +237,23 @@ describe('usePdvController', () => {
       getBusinessType('tab'),
       expect.objectContaining({ customerUid: 'customer-9' }),
     );
+  });
+
+  it('carimba a mesma rodada em todos os itens ao registrar a venda', async () => {
+    registerOrder.mockResolvedValue(right({ id: 1 }));
+    const { result } = await setup();
+    act(() => result.current.addSimpleToCart(product({ id: 1 })));
+    act(() => result.current.addSimpleToCart(product({ id: 2 })));
+    await act(async () => {
+      await result.current.finalizeSale('now', 'dinheiro');
+    });
+
+    const sent = registerOrder.mock.calls[0][2].items as OrderItem[];
+    expect(sent).toHaveLength(2);
+    expect(sent[0].batchId).toBeTruthy();
+    expect(sent[1].batchId).toBe(sent[0].batchId);
+    expect(sent[0].addedAt).toBeGreaterThan(0);
+    expect(sent[1].addedAt).toBe(sent[0].addedAt);
   });
 
   it('não vincula cliente quando o nome foi digitado sem selecionar', async () => {

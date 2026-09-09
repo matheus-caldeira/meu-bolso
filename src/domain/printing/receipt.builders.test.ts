@@ -77,6 +77,8 @@ describe('buildOrderReceipt', () => {
             { groupName: 'Extras', name: 'Bacon', qty: 1, price: 2 },
           ],
           customizationTotal: 2,
+          batchId: 'b-1',
+          addedAt: 1000,
         },
       ],
     });

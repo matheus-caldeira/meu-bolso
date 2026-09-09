@@ -51,6 +51,8 @@ describe('ProductGrid', () => {
         salePrice: 10,
         costPrice: 1,
         qty: 2,
+        batchId: 'b-1',
+        addedAt: 1000,
       },
     ];
     render(<ProductGrid products={products} cart={cart} onSelect={vi.fn()} />);
@@ -320,6 +322,8 @@ describe('ProductGrid linear', () => {
         salePrice: 10,
         costPrice: 1,
         qty: 4,
+        batchId: 'b-1',
+        addedAt: 1000,
       },
     ];
     render(

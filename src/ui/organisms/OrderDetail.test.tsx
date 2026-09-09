@@ -17,7 +17,15 @@ function makeOrder(partial: Partial<Order>): Order {
     businessTypeId: 'tab',
     sessionUid: 'session-1',
     items: [
-      { productUid: 'p-1', name: 'Refri', salePrice: 5, costPrice: 2, qty: 1 },
+      {
+        productUid: 'p-1',
+        name: 'Refri',
+        salePrice: 5,
+        costPrice: 2,
+        qty: 1,
+        batchId: 'b-1',
+        addedAt: 1000,
+      },
     ],
     total: 30,
     paymentMethod: null,
@@ -46,6 +54,8 @@ const RICH_ORDER = makeOrder({
         { groupName: 'Adicionais', name: 'Bacon', qty: 2, price: 5 },
         { groupName: 'Adicionais', name: 'Queijo', qty: 1, price: 0 },
       ],
+      batchId: 'b-1',
+      addedAt: 1000,
     },
     {
       productUid: 'product-2',
@@ -53,6 +63,8 @@ const RICH_ORDER = makeOrder({
       salePrice: 8,
       costPrice: 2,
       qty: 1,
+      batchId: 'b-1',
+      addedAt: 1000,
     },
   ],
 });
@@ -428,6 +440,8 @@ describe('OrderDetail', () => {
               salePrice: 5,
               costPrice: 2,
               qty: 2,
+              batchId: 'b-1',
+              addedAt: 1000,
             },
           ],
         })}
@@ -514,6 +528,8 @@ describe('OrderDetail', () => {
               salePrice: 5,
               costPrice: 2,
               qty: 1,
+              batchId: 'b-1',
+              addedAt: 1000,
             },
             {
               productUid: 'p-2',
@@ -521,6 +537,8 @@ describe('OrderDetail', () => {
               salePrice: 3,
               costPrice: 1,
               qty: 1,
+              batchId: 'b-1',
+              addedAt: 1000,
             },
           ],
         })}
@@ -545,8 +563,24 @@ describe('OrderDetail', () => {
     );
 
     expect(onSaveItems).toHaveBeenCalledWith([
-      { productUid: 'p-1', name: 'Refri', salePrice: 5, costPrice: 2, qty: 1 },
-      { productUid: 'p-2', name: 'Água', salePrice: 3, costPrice: 1, qty: 2 },
+      {
+        productUid: 'p-1',
+        name: 'Refri',
+        salePrice: 5,
+        costPrice: 2,
+        qty: 1,
+        batchId: 'b-1',
+        addedAt: 1000,
+      },
+      {
+        productUid: 'p-2',
+        name: 'Água',
+        salePrice: 3,
+        costPrice: 1,
+        qty: 2,
+        batchId: 'b-1',
+        addedAt: 1000,
+      },
     ]);
   });
 

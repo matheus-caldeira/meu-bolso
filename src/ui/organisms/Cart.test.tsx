@@ -55,6 +55,8 @@ const cartItem: CartItem = {
   customizations: [
     { groupName: 'Adicionais', name: 'Bacon', qty: 2, price: 3 },
   ],
+  batchId: 'b-1',
+  addedAt: 1000,
 };
 
 const selectedTab = { uid: 'tab-1', ticket: '0012' } as Order;

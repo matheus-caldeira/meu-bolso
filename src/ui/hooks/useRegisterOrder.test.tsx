@@ -40,6 +40,8 @@ const input: RegisterOrderInput = {
       salePrice: 10,
       costPrice: 5,
       qty: 1,
+      batchId: 'b-1',
+      addedAt: 1000,
     },
   ],
 };

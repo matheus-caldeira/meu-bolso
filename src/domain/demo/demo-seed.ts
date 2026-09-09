@@ -15,6 +15,7 @@ import type {
 import {
   calculateCustomizationTotal,
   calculateOrderTotal,
+  stampBatch,
 } from '../order/order.rules';
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -315,6 +316,8 @@ function buildOrderItems(
       qty,
       customizations: customizations.length > 0 ? customizations : undefined,
       customizationTotal: total > 0 ? total : undefined,
+      batchId: '',
+      addedAt: 0,
     });
   }
   return orderItems;
@@ -338,7 +341,7 @@ function buildOrders(
     if (isOpenSession && statusRoll < 0.4) status = 'open';
     else if (statusRoll > 0.93) status = 'cancelled';
     const applyCustomizations = rng() < 0.6;
-    const orderItems = buildOrderItems(
+    const builtItems = buildOrderItems(
       rng,
       products,
       groups,
@@ -347,6 +350,7 @@ function buildOrders(
     );
     const customer = pick(rng, customers);
     const createdAt = session.openedAt + intBetween(rng, 0, 9) * HOUR;
+    const orderItems = stampBatch(builtItems, nextUid('batch'), createdAt);
     orders.push({
       id: index + 1,
       uid: nextUid('order'),

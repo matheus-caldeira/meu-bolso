@@ -16,6 +16,7 @@ import {
   nextStage,
   prevStage,
   resolveAutoStage,
+  stampBatch,
   validateCartNotEmpty,
   validateRequiredCustomizations,
 } from './order.rules';
@@ -27,6 +28,8 @@ const item = (over: Partial<OrderItem> = {}): OrderItem => ({
   salePrice: 10,
   costPrice: 5,
   qty: 1,
+  batchId: 'batch-1',
+  addedAt: 1000,
   ...over,
 });
 
@@ -319,10 +322,24 @@ describe('canReopen', () => {
 describe('mergeOrderItems', () => {
   it('soma a quantidade de itens iguais', () => {
     const current: OrderItem[] = [
-      { name: 'Refri', salePrice: 5, costPrice: 2, qty: 1 },
+      {
+        name: 'Refri',
+        salePrice: 5,
+        costPrice: 2,
+        qty: 1,
+        batchId: 'b-1',
+        addedAt: 1000,
+      },
     ];
     const incoming: OrderItem[] = [
-      { name: 'Refri', salePrice: 5, costPrice: 2, qty: 2 },
+      {
+        name: 'Refri',
+        salePrice: 5,
+        costPrice: 2,
+        qty: 2,
+        batchId: 'b-1',
+        addedAt: 1000,
+      },
     ];
     const merged = mergeOrderItems(current, incoming);
     expect(merged).toHaveLength(1);
@@ -331,10 +348,24 @@ describe('mergeOrderItems', () => {
 
   it('mantém itens diferentes separados', () => {
     const current: OrderItem[] = [
-      { name: 'Refri', salePrice: 5, costPrice: 2, qty: 1 },
+      {
+        name: 'Refri',
+        salePrice: 5,
+        costPrice: 2,
+        qty: 1,
+        batchId: 'b-1',
+        addedAt: 1000,
+      },
     ];
     const incoming: OrderItem[] = [
-      { name: 'Cachorro', salePrice: 10, costPrice: 4, qty: 1 },
+      {
+        name: 'Cachorro',
+        salePrice: 10,
+        costPrice: 4,
+        qty: 1,
+        batchId: 'b-1',
+        addedAt: 1000,
+      },
     ];
     expect(mergeOrderItems(current, incoming)).toHaveLength(2);
   });
@@ -347,10 +378,19 @@ describe('mergeOrderItems', () => {
         costPrice: 2,
         qty: 1,
         observation: 'gelado',
+        batchId: 'b-1',
+        addedAt: 1000,
       },
     ];
     const incoming: OrderItem[] = [
-      { name: 'Refri', salePrice: 5, costPrice: 2, qty: 1 },
+      {
+        name: 'Refri',
+        salePrice: 5,
+        costPrice: 2,
+        qty: 1,
+        batchId: 'b-1',
+        addedAt: 1000,
+      },
     ];
     expect(mergeOrderItems(current, incoming)).toHaveLength(2);
   });
@@ -365,10 +405,19 @@ describe('mergeOrderItems', () => {
         customizations: [
           { groupName: 'Extras', name: 'Bacon', qty: 1, price: 2 },
         ],
+        batchId: 'b-1',
+        addedAt: 1000,
       },
     ];
     const incoming: OrderItem[] = [
-      { name: 'Cachorro', salePrice: 10, costPrice: 4, qty: 1 },
+      {
+        name: 'Cachorro',
+        salePrice: 10,
+        costPrice: 4,
+        qty: 1,
+        batchId: 'b-1',
+        addedAt: 1000,
+      },
     ];
     expect(mergeOrderItems(current, incoming)).toHaveLength(2);
   });
@@ -384,6 +433,8 @@ describe('mergeOrderItems', () => {
           { groupName: 'Extras', name: 'Bacon', qty: 1, price: 2 },
         ],
         customizationTotal: 2,
+        batchId: 'b-1',
+        addedAt: 1000,
       },
     ];
     const incoming: OrderItem[] = [
@@ -396,6 +447,8 @@ describe('mergeOrderItems', () => {
           { groupName: 'Extras', name: 'Bacon', qty: 1, price: 3 },
         ],
         customizationTotal: 3,
+        batchId: 'b-1',
+        addedAt: 1000,
       },
     ];
     const merged = mergeOrderItems(current, incoming);
@@ -408,10 +461,24 @@ describe('mergeOrderItems', () => {
 
   it('não agrupa itens com custo diferente', () => {
     const current: OrderItem[] = [
-      { name: 'Cachorro', salePrice: 10, costPrice: 4, qty: 1 },
+      {
+        name: 'Cachorro',
+        salePrice: 10,
+        costPrice: 4,
+        qty: 1,
+        batchId: 'b-1',
+        addedAt: 1000,
+      },
     ];
     const incoming: OrderItem[] = [
-      { name: 'Cachorro', salePrice: 10, costPrice: 5, qty: 1 },
+      {
+        name: 'Cachorro',
+        salePrice: 10,
+        costPrice: 5,
+        qty: 1,
+        batchId: 'b-1',
+        addedAt: 1000,
+      },
     ];
     const merged = mergeOrderItems(current, incoming);
     expect(merged).toHaveLength(2);
@@ -421,26 +488,126 @@ describe('mergeOrderItems', () => {
 
   it('preserva a lista atual quando não há itens novos', () => {
     const current: OrderItem[] = [
-      { name: 'Refri', salePrice: 5, costPrice: 2, qty: 1 },
+      {
+        name: 'Refri',
+        salePrice: 5,
+        costPrice: 2,
+        qty: 1,
+        batchId: 'b-1',
+        addedAt: 1000,
+      },
     ];
     expect(mergeOrderItems(current, [])).toEqual(current);
   });
 
   it('devolve os itens novos quando a comanda está vazia', () => {
     const incoming: OrderItem[] = [
-      { name: 'Refri', salePrice: 5, costPrice: 2, qty: 1 },
+      {
+        name: 'Refri',
+        salePrice: 5,
+        costPrice: 2,
+        qty: 1,
+        batchId: 'b-1',
+        addedAt: 1000,
+      },
     ];
     expect(mergeOrderItems([], incoming)).toEqual(incoming);
+  });
+
+  it('mantém separados itens iguais de rodadas diferentes', () => {
+    const current: OrderItem[] = [
+      {
+        name: 'Refri',
+        salePrice: 5,
+        costPrice: 2,
+        qty: 1,
+        batchId: 'b-1',
+        addedAt: 1000,
+      },
+    ];
+    const incoming: OrderItem[] = [
+      {
+        name: 'Refri',
+        salePrice: 5,
+        costPrice: 2,
+        qty: 1,
+        batchId: 'b-2',
+        addedAt: 2000,
+      },
+    ];
+    expect(mergeOrderItems(current, incoming)).toHaveLength(2);
+  });
+});
+
+describe('stampBatch', () => {
+  it('carimba todos os itens com a mesma rodada', () => {
+    const stamped = stampBatch(
+      [
+        {
+          name: 'Coca',
+          salePrice: 5,
+          costPrice: 2,
+          qty: 1,
+          batchId: '',
+          addedAt: 0,
+        },
+        {
+          name: 'Pastel',
+          salePrice: 6,
+          costPrice: 3,
+          qty: 1,
+          batchId: '',
+          addedAt: 0,
+        },
+      ],
+      'b-9',
+      5000,
+    );
+
+    expect(stamped.every((entry) => entry.batchId === 'b-9')).toBe(true);
+    expect(stamped.every((entry) => entry.addedAt === 5000)).toBe(true);
+  });
+
+  it('não altera a lista original', () => {
+    const items: OrderItem[] = [
+      {
+        name: 'Coca',
+        salePrice: 5,
+        costPrice: 2,
+        qty: 1,
+        batchId: '',
+        addedAt: 0,
+      },
+    ];
+    stampBatch(items, 'b-9', 5000);
+    expect(items[0].batchId).toBe('');
+    expect(items[0].addedAt).toBe(0);
   });
 });
 
 describe('diffStockByProduct', () => {
   it('retira do estoque o que foi acrescentado', () => {
     const current: OrderItem[] = [
-      { productUid: 'p-1', name: 'Refri', salePrice: 5, costPrice: 2, qty: 1 },
+      {
+        productUid: 'p-1',
+        name: 'Refri',
+        salePrice: 5,
+        costPrice: 2,
+        qty: 1,
+        batchId: 'b-1',
+        addedAt: 1000,
+      },
     ];
     const next: OrderItem[] = [
-      { productUid: 'p-1', name: 'Refri', salePrice: 5, costPrice: 2, qty: 3 },
+      {
+        productUid: 'p-1',
+        name: 'Refri',
+        salePrice: 5,
+        costPrice: 2,
+        qty: 3,
+        batchId: 'b-1',
+        addedAt: 1000,
+      },
     ];
 
     expect(diffStockByProduct(current, next)).toEqual([
@@ -450,7 +617,15 @@ describe('diffStockByProduct', () => {
 
   it('devolve ao estoque o que foi removido', () => {
     const current: OrderItem[] = [
-      { productUid: 'p-1', name: 'Refri', salePrice: 5, costPrice: 2, qty: 3 },
+      {
+        productUid: 'p-1',
+        name: 'Refri',
+        salePrice: 5,
+        costPrice: 2,
+        qty: 3,
+        batchId: 'b-1',
+        addedAt: 1000,
+      },
     ];
 
     expect(diffStockByProduct(current, [])).toEqual([
@@ -460,11 +635,35 @@ describe('diffStockByProduct', () => {
 
   it('soma itens repetidos do mesmo produto antes de comparar', () => {
     const current: OrderItem[] = [
-      { productUid: 'p-1', name: 'Refri', salePrice: 5, costPrice: 2, qty: 1 },
-      { productUid: 'p-1', name: 'Refri', salePrice: 5, costPrice: 2, qty: 2 },
+      {
+        productUid: 'p-1',
+        name: 'Refri',
+        salePrice: 5,
+        costPrice: 2,
+        qty: 1,
+        batchId: 'b-1',
+        addedAt: 1000,
+      },
+      {
+        productUid: 'p-1',
+        name: 'Refri',
+        salePrice: 5,
+        costPrice: 2,
+        qty: 2,
+        batchId: 'b-1',
+        addedAt: 1000,
+      },
     ];
     const next: OrderItem[] = [
-      { productUid: 'p-1', name: 'Refri', salePrice: 5, costPrice: 2, qty: 1 },
+      {
+        productUid: 'p-1',
+        name: 'Refri',
+        salePrice: 5,
+        costPrice: 2,
+        qty: 1,
+        batchId: 'b-1',
+        addedAt: 1000,
+      },
     ];
 
     expect(diffStockByProduct(current, next)).toEqual([
@@ -474,7 +673,14 @@ describe('diffStockByProduct', () => {
 
   it('ignora itens sem produto vinculado', () => {
     const current: OrderItem[] = [
-      { name: 'Taxa', salePrice: 5, costPrice: 0, qty: 1 },
+      {
+        name: 'Taxa',
+        salePrice: 5,
+        costPrice: 0,
+        qty: 1,
+        batchId: 'b-1',
+        addedAt: 1000,
+      },
     ];
 
     expect(diffStockByProduct(current, [])).toEqual([]);
@@ -482,7 +688,15 @@ describe('diffStockByProduct', () => {
 
   it('omite produtos cujo saldo não mudou', () => {
     const items: OrderItem[] = [
-      { productUid: 'p-1', name: 'Refri', salePrice: 5, costPrice: 2, qty: 2 },
+      {
+        productUid: 'p-1',
+        name: 'Refri',
+        salePrice: 5,
+        costPrice: 2,
+        qty: 2,
+        batchId: 'b-1',
+        addedAt: 1000,
+      },
     ];
 
     expect(diffStockByProduct(items, items)).toEqual([]);
@@ -490,7 +704,15 @@ describe('diffStockByProduct', () => {
 
   it('retira do estoque produto adicionado à comanda vazia', () => {
     const next: OrderItem[] = [
-      { productUid: 'p-1', name: 'Refri', salePrice: 5, costPrice: 2, qty: 2 },
+      {
+        productUid: 'p-1',
+        name: 'Refri',
+        salePrice: 5,
+        costPrice: 2,
+        qty: 2,
+        batchId: 'b-1',
+        addedAt: 1000,
+      },
     ];
 
     expect(diffStockByProduct([], next)).toEqual([

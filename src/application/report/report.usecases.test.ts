@@ -33,6 +33,8 @@ const item = (over: Partial<OrderItem> = {}): OrderItem => ({
   costPrice: 8,
   qty: 1,
   ...over,
+  batchId: 'b-1',
+  addedAt: 1000,
 });
 
 const order = (over: Partial<Order> = {}): Order => ({

@@ -167,6 +167,8 @@ describe('useTabs', () => {
           salePrice: 5,
           costPrice: 2,
           qty: 1,
+          batchId: 'b-1',
+          addedAt: 1000,
         },
       ]);
     });
@@ -205,6 +207,8 @@ describe('useTabs', () => {
           salePrice: 5,
           costPrice: 2,
           qty: 1,
+          batchId: 'b-1',
+          addedAt: 1000,
         },
       ]);
     });

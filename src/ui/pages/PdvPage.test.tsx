@@ -17,6 +17,7 @@ import {
   type BusinessTypeDefinition,
 } from '../../domain/business-type/registry';
 import type { RegisterOrderInput } from '../../application/order/register-order.usecase';
+import type { OrderItem } from '../../domain/order/order.entity';
 
 const navigate = vi.fn();
 const registerOrder = vi.fn();
@@ -404,6 +405,9 @@ describe('PdvPage', () => {
     );
 
     await waitFor(() => expect(addItemsToTab).toHaveBeenCalled());
+    const sent = addItemsToTab.mock.calls[0][0] as { items: OrderItem[] };
+    expect(sent.items[0].batchId).toBeTruthy();
+    expect(sent.items[0].addedAt).toBeGreaterThan(0);
   });
 
   it('mantém o carrinho quando lançar na comanda falha', async () => {
