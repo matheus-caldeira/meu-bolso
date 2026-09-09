@@ -34,11 +34,23 @@ const addItemsToTab = vi.fn();
 const closeTab = vi.fn();
 const reopenTab = vi.fn();
 const saveCustomer = vi.fn();
+const printBatch = vi.fn();
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');
   return { ...actual, useNavigate: () => navigate };
 });
+
+vi.mock('../hooks/usePrint', () => ({
+  usePrint: () => ({
+    printOrder: vi.fn(),
+    printBatch: (order: unknown, batchId: string) => printBatch(order, batchId),
+    printStock: vi.fn(),
+    printPendingTabs: vi.fn(),
+    printDayReport: vi.fn(),
+    printing: false,
+  }),
+}));
 
 vi.mock('../../app/container', () => ({
   container: {
@@ -151,6 +163,8 @@ describe('PdvPage', () => {
     closeTab.mockReset();
     reopenTab.mockReset();
     saveCustomer.mockReset();
+    printBatch.mockReset();
+    printBatch.mockResolvedValue(true);
     peekTicketSuggestion.mockResolvedValue(right('0001'));
     searchCustomers.mockResolvedValue(right([]));
     loadProductCustomizations.mockResolvedValue(right([]));
@@ -189,7 +203,7 @@ describe('PdvPage', () => {
     getActiveSession.mockResolvedValue(
       right({ id: 3, uid: 'session-3', closedAt: null }),
     );
-    registerOrder.mockResolvedValue(right({ id: 1 }));
+    registerOrder.mockResolvedValue(right(openTabFixture));
     renderPage();
     await waitFor(() => expect(screen.getByText('Coca')).toBeInTheDocument());
 
@@ -526,7 +540,7 @@ describe('PdvPage', () => {
     expect(saveCustomer).not.toHaveBeenCalled();
   });
 
-  it('vai para os pedidos depois de lançar na comanda', async () => {
+  it('oferece imprimir após lançar itens na comanda', async () => {
     getActiveSession.mockResolvedValue(
       right({ id: 3, uid: 'session-3', closedAt: null }),
     );
@@ -540,6 +554,62 @@ describe('PdvPage', () => {
       screen.getByRole('button', { name: /lançar na comanda/i }),
     );
 
+    expect(
+      await screen.findByRole('dialog', { name: 'Imprimir comanda?' }),
+    ).toBeInTheDocument();
+    expect(navigate).not.toHaveBeenCalledWith('/orders');
+  });
+
+  it('imprime a rodada lançada e vai para os pedidos ao confirmar', async () => {
+    getActiveSession.mockResolvedValue(
+      right({ id: 3, uid: 'session-3', closedAt: null }),
+    );
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole('button', { name: /coca/i }));
+    await user.type(screen.getByRole('combobox', { name: 'Comanda' }), 'Maju');
+    await user.click(screen.getByRole('option', { name: /Maju/i }));
+    await user.click(
+      screen.getByRole('button', { name: /lançar na comanda/i }),
+    );
+
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Imprimir comanda?',
+    });
+    await user.click(within(dialog).getByRole('button', { name: 'Imprimir' }));
+
+    await waitFor(() =>
+      expect(printBatch).toHaveBeenCalledWith(
+        expect.objectContaining({ uid: 'tab-1' }),
+        expect.any(String),
+      ),
+    );
+    const launched = addItemsToTab.mock.calls[0][0] as { items: OrderItem[] };
+    expect(printBatch.mock.calls[0][1]).toBe(launched.items[0].batchId);
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/orders'));
+  });
+
+  it('vai para os pedidos sem imprimir ao dispensar a impressão da rodada', async () => {
+    getActiveSession.mockResolvedValue(
+      right({ id: 3, uid: 'session-3', closedAt: null }),
+    );
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole('button', { name: /coca/i }));
+    await user.type(screen.getByRole('combobox', { name: 'Comanda' }), 'Maju');
+    await user.click(screen.getByRole('option', { name: /Maju/i }));
+    await user.click(
+      screen.getByRole('button', { name: /lançar na comanda/i }),
+    );
+
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Imprimir comanda?',
+    });
+    await user.click(within(dialog).getByRole('button', { name: 'Agora não' }));
+
+    expect(printBatch).not.toHaveBeenCalled();
     await waitFor(() => expect(navigate).toHaveBeenCalledWith('/orders'));
   });
 
@@ -712,7 +782,7 @@ describe('PdvPage', () => {
     expect(screen.getByRole('combobox', { name: 'Cliente' })).toHaveValue('');
   });
 
-  it('imprime o número da comanda recém-aberta', async () => {
+  it('imprime a comanda recém-aberta', async () => {
     getActiveSession.mockResolvedValue(
       right({ id: 3, uid: 'session-3', closedAt: null }),
     );
@@ -736,9 +806,15 @@ describe('PdvPage', () => {
       name: 'Comanda aberta',
     });
     await user.click(
-      within(dialog).getByRole('button', { name: /Imprimir número/ }),
+      within(dialog).getByRole('button', { name: /Imprimir comanda/ }),
     );
 
+    await waitFor(() =>
+      expect(printBatch).toHaveBeenCalledWith(
+        expect.objectContaining({ uid: newTab.uid }),
+        expect.any(String),
+      ),
+    );
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     );
@@ -762,6 +838,71 @@ describe('PdvPage', () => {
     expect(
       screen.queryByRole('dialog', { name: 'Comanda aberta' }),
     ).not.toBeInTheDocument();
+  });
+
+  it('oferece imprimir após finalizar venda avulsa', async () => {
+    getActiveSession.mockResolvedValue(
+      right({ id: 3, uid: 'session-3', closedAt: null }),
+    );
+    registerOrder.mockResolvedValue(
+      right({ ...openTabFixture, uid: 'order-avulso', status: 'paid' }),
+    );
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole('button', { name: /coca/i }));
+    await user.click(screen.getByRole('button', { name: 'Finalizar Venda' }));
+    await user.click(screen.getByRole('button', { name: 'Pagar agora' }));
+    await user.click(screen.getByRole('button', { name: /Dinheiro/ }));
+    await user.click(
+      screen.getByRole('button', { name: 'Confirmar Pagamento' }),
+    );
+
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Imprimir comanda?',
+    });
+    await user.click(within(dialog).getByRole('button', { name: 'Imprimir' }));
+
+    await waitFor(() =>
+      expect(printBatch).toHaveBeenCalledWith(
+        expect.objectContaining({ uid: 'order-avulso' }),
+        expect.any(String),
+      ),
+    );
+    const registered = registerOrder.mock.calls[0][2] as {
+      items: OrderItem[];
+    };
+    expect(printBatch.mock.calls[0][1]).toBe(registered.items[0].batchId);
+  });
+
+  it('fecha a impressão da venda avulsa sem navegar ao dispensar', async () => {
+    getActiveSession.mockResolvedValue(
+      right({ id: 3, uid: 'session-3', closedAt: null }),
+    );
+    registerOrder.mockResolvedValue(
+      right({ ...openTabFixture, uid: 'order-avulso', status: 'paid' }),
+    );
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole('button', { name: /coca/i }));
+    await user.click(screen.getByRole('button', { name: 'Finalizar Venda' }));
+    await user.click(screen.getByRole('button', { name: 'Pagar agora' }));
+    await user.click(screen.getByRole('button', { name: /Dinheiro/ }));
+    await user.click(
+      screen.getByRole('button', { name: 'Confirmar Pagamento' }),
+    );
+
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Imprimir comanda?',
+    });
+    await user.click(within(dialog).getByRole('button', { name: 'Agora não' }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+    expect(printBatch).not.toHaveBeenCalled();
+    expect(navigate).not.toHaveBeenCalledWith('/orders');
   });
 
   it('não abre comanda sem cliente informado', async () => {
@@ -794,6 +935,8 @@ describe('PdvPage no celular', () => {
     openTab.mockReset();
     addItemsToTab.mockReset();
     saveCustomer.mockReset();
+    printBatch.mockReset();
+    printBatch.mockResolvedValue(true);
     peekTicketSuggestion.mockResolvedValue(right('0001'));
     searchCustomers.mockResolvedValue(right([]));
     loadProductCustomizations.mockResolvedValue(right([]));
@@ -993,6 +1136,73 @@ describe('PdvPage no celular', () => {
       }),
     ).toHaveFocus();
     expect(screen.queryByText('Como deseja pagar?')).not.toBeInTheDocument();
+  });
+
+  it('abre e fecha a lista de itens do pedido', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Coca')).toBeInTheDocument());
+    await user.click(screen.getByRole('button', { name: /Coca/ }));
+    const bar = await screen.findByTestId('cart-bar');
+
+    await user.click(within(bar).getByRole('button', { name: /^1 item/ }));
+
+    const sheet = await screen.findByRole('dialog', {
+      name: 'Itens do pedido',
+    });
+    expect(sheet).toBeInTheDocument();
+
+    await user.keyboard('{Escape}');
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'Itens do pedido' }),
+      ).not.toBeInTheDocument(),
+    );
+  });
+
+  it('fecha a identificação da venda sem escolher', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Coca')).toBeInTheDocument());
+    await user.click(screen.getByRole('button', { name: /Coca/ }));
+    const bar = await screen.findByTestId('cart-bar');
+    await user.click(
+      within(bar).getByRole('button', { name: 'Finalizar venda' }),
+    );
+    await screen.findByRole('dialog', { name: 'Identificar a venda' });
+
+    await user.keyboard('{Escape}');
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'Identificar a venda' }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(screen.queryByText('Como deseja pagar?')).not.toBeInTheDocument();
+  });
+
+  it('lança na comanda pré-selecionada em vez de abrir outra', async () => {
+    listOrders.mockResolvedValue(right([openTabFixture]));
+    addItemsToTab.mockResolvedValue(right(openTabFixture));
+    const user = userEvent.setup();
+    renderPage(['/pdv?tab=tab-1']);
+
+    await waitFor(() => expect(screen.getByText('Coca')).toBeInTheDocument());
+    await user.click(screen.getByRole('button', { name: /Coca/ }));
+    const bar = await screen.findByTestId('cart-bar');
+
+    await user.click(
+      within(bar).getByRole('button', { name: 'Lançar na comanda nº 007' }),
+    );
+
+    await waitFor(() => expect(addItemsToTab).toHaveBeenCalled());
+    expect(openTab).not.toHaveBeenCalled();
+    expect(
+      await screen.findByRole('dialog', { name: 'Imprimir comanda?' }),
+    ).toBeInTheDocument();
   });
 
   it('não pergunta nada quando já há cliente definido', async () => {

@@ -12,7 +12,11 @@ import {
 } from '../../domain/order/order.rules';
 import { createUid } from '../../domain/shared/uid';
 import { getBusinessType } from '../../domain/business-type/registry';
-import type { OrderItem, OrderStatus } from '../../domain/order/order.entity';
+import type {
+  Order,
+  OrderItem,
+  OrderStatus,
+} from '../../domain/order/order.entity';
 import type { Product } from '../../domain/product/product.entity';
 import type { Customer } from '../../domain/customer/customer.entity';
 import { useToast } from '../molecules/toast-context';
@@ -24,6 +28,11 @@ export interface CartItem extends OrderItem {
 }
 
 export type PayOption = 'now' | 'tab' | 'delivery';
+
+export interface FinalizedSale {
+  order: Order;
+  batchId: string;
+}
 
 function genCartId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 4);
@@ -167,20 +176,24 @@ export function usePdvController(sessionUid: string) {
   }, [customerSearch, refreshTicket]);
 
   const finalizeSale = useCallback(
-    async (option: PayOption, paymentMethod: string | null) => {
+    async (
+      option: PayOption,
+      paymentMethod: string | null,
+    ): Promise<FinalizedSale | null> => {
       const definition = getBusinessType(businessTypeId);
       if (!definition) {
         const error = businessTypeId
           ? new UnknownBusinessTypeError(businessTypeId)
           : new BusinessTypeNotSelectedError();
         toast(error.message, 'error');
-        return false;
+        return null;
       }
 
       const edited = ticket.trim() !== suggestion;
       const orderTicket = edited ? ticket.trim() || '-' : undefined;
       const realAddress = address === '__new__' ? '' : address.trim();
 
+      const batchId = createUid();
       const items: OrderItem[] = stampBatch(
         cart.map((item) => ({
           productUid: item.productUid,
@@ -194,7 +207,7 @@ export function usePdvController(sessionUid: string) {
           batchId: item.batchId,
           addedAt: item.addedAt,
         })),
-        createUid(),
+        batchId,
         Date.now(),
       );
 
@@ -219,12 +232,12 @@ export function usePdvController(sessionUid: string) {
               : 'Erro ao registrar venda.',
             'error',
           );
-          return false;
+          return null;
         },
-        () => {
+        (order) => {
           toast('Venda registrada!');
           resetForm();
-          return true;
+          return { order, batchId };
         },
       );
     },

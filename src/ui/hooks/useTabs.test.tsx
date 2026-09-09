@@ -153,15 +153,15 @@ describe('useTabs', () => {
     expect(opened).toBeNull();
   });
 
-  it('lança itens na comanda e devolve true no sucesso', async () => {
-    addItemsToTab.mockResolvedValue(right(order()));
+  it('lança itens na comanda e devolve o pedido atualizado no sucesso', async () => {
+    addItemsToTab.mockResolvedValue(right(order({ total: 5 })));
 
     const { result } = renderHook(() => useTabs('session-1'), { wrapper });
     await waitFor(() => expect(result.current.loading).toBe(false));
 
-    let ok: boolean | undefined;
+    let updated: Order | null = null;
     await act(async () => {
-      ok = await result.current.addItems('order-1', [
+      updated = await result.current.addItems('order-1', [
         {
           name: 'Refrigerante',
           salePrice: 5,
@@ -173,24 +173,24 @@ describe('useTabs', () => {
       ]);
     });
 
-    expect(ok).toBe(true);
+    expect(updated).toMatchObject({ uid: 'order-1', total: 5 });
     expect(addItemsToTab).toHaveBeenCalledWith(
       expect.objectContaining({ orderUid: 'order-1' }),
     );
   });
 
-  it('devolve false quando lançar itens falha', async () => {
+  it('devolve null quando lançar itens falha', async () => {
     addItemsToTab.mockResolvedValue(left(new TabNotOpenError()));
 
     const { result } = renderHook(() => useTabs('session-1'), { wrapper });
     await waitFor(() => expect(result.current.loading).toBe(false));
 
-    let ok: boolean | undefined;
+    let updated: Order | null = order();
     await act(async () => {
-      ok = await result.current.addItems('order-1', []);
+      updated = await result.current.addItems('order-1', []);
     });
 
-    expect(ok).toBe(false);
+    expect(updated).toBeNull();
   });
 
   it('atualiza os itens da comanda e devolve true no sucesso', async () => {

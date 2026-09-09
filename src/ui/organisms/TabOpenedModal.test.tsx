@@ -63,12 +63,12 @@ describe('TabOpenedModal', () => {
     expect(onContinue).toHaveBeenCalledTimes(1);
   });
 
-  it('imprime o número', async () => {
+  it('imprime a comanda', async () => {
     const onPrint = vi.fn();
     render(<TabOpenedModal tab={tab} onContinue={vi.fn()} onPrint={onPrint} />);
 
     await userEvent.click(
-      screen.getByRole('button', { name: /Imprimir número/ }),
+      screen.getByRole('button', { name: /Imprimir comanda/ }),
     );
 
     expect(onPrint).toHaveBeenCalledTimes(1);

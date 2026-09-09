@@ -61,17 +61,17 @@ export function useTabs(sessionUid: string) {
   );
 
   const addItems = useCallback(
-    async (orderUid: string, items: OrderItem[]) => {
+    async (orderUid: string, items: OrderItem[]): Promise<Order | null> => {
       const result = await container.addItemsToTab({ orderUid, items });
       return fold(
         result,
         (error) => {
           toast(error.message, 'error');
-          return false;
+          return null;
         },
-        () => {
+        (order) => {
           void refresh();
-          return true;
+          return order;
         },
       );
     },
