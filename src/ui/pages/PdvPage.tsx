@@ -17,7 +17,6 @@ import { useSession } from '../hooks/useSession';
 import { useProducts } from '../hooks/useProducts';
 import { usePdvController, type PayOption } from '../hooks/usePdvController';
 import { useTabs } from '../hooks/useTabs';
-import { usePrint } from '../hooks/usePrint';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { useToast } from '../molecules/toast-context';
 import {
@@ -48,7 +47,6 @@ function PdvSession({ sessionUid }: { sessionUid: string }) {
     openTab,
     refresh: refreshTabs,
   } = useTabs(sessionUid);
-  const { printTabNumber } = usePrint();
   const isMobile = useIsMobile();
   const toast = useToast();
   const [searchParams] = useSearchParams();
@@ -272,10 +270,7 @@ function PdvSession({ sessionUid }: { sessionUid: string }) {
       <TabOpenedModal
         tab={openedTab}
         onContinue={finishTabOpening}
-        onPrint={() => {
-          void printTabNumber(openedTab!);
-          finishTabOpening();
-        }}
+        onPrint={finishTabOpening}
       />
 
       <OpenTabPromptModal

@@ -8,9 +8,9 @@ import type { SessionReport } from '../../application/report/report.usecases';
 import type { Receipt } from '../../domain/printing/receipt.entity';
 import type { ReceiptPrinter } from '../../domain/printing/receipt-printer';
 import {
+  buildBatchReceipt,
   buildDayReportReceipt,
   buildOrderReceipt,
-  buildTabNumberReceipt,
   buildPendingTabsReceipt,
   buildStockReceipt,
 } from '../../domain/printing/receipt.builders';
@@ -33,6 +33,7 @@ interface PrinterSettings {
   driver: PrinterDriver;
   paperWidth: PaperWidth;
   codepage: PrinterCodepage;
+  includePrevious: boolean;
 }
 
 function buildPrinter(
@@ -57,6 +58,7 @@ export function usePrint() {
     driver: 'browser',
     paperWidth: 80,
     codepage: 'cp860',
+    includePrevious: true,
   });
 
   const loadSettings = useCallback(async (): Promise<PrinterSettings> => {
@@ -67,6 +69,7 @@ export function usePrint() {
         driver: result.right.printerDriver,
         paperWidth: result.right.printerPaperWidth,
         codepage: result.right.printerCodepage,
+        includePrevious: result.right.printerBatchIncludesPrevious,
       };
     }
     return settingsRef.current;
@@ -116,11 +119,17 @@ export function usePrint() {
     [loadSettings, printReceipt],
   );
 
-  const printTabNumber = useCallback(
-    async (order: Order) => {
+  const printBatch = useCallback(
+    async (order: Order, batchId: string) => {
       const settings = await loadSettings();
       return printReceipt(
-        buildTabNumberReceipt(order, settings.businessName, Date.now()),
+        buildBatchReceipt(
+          order,
+          batchId,
+          { includePrevious: settings.includePrevious },
+          settings.businessName,
+          Date.now(),
+        ),
         settings,
       );
     },
@@ -162,7 +171,7 @@ export function usePrint() {
 
   return {
     printOrder,
-    printTabNumber,
+    printBatch,
     printStock,
     printPendingTabs,
     printDayReport,

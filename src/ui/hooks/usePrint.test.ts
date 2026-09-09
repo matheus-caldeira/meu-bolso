@@ -53,10 +53,61 @@ const order = {
   total: 5,
 } as never;
 
+const orderWithTwoBatches = {
+  uid: 'tab-1',
+  ticket: '042',
+  customerName: 'Maju (Lobinha)',
+  items: [
+    {
+      uid: 'i1',
+      productUid: 'p1',
+      name: 'Refri',
+      qty: 1,
+      salePrice: 5,
+      batchId: 'b-1',
+      addedAt: 1,
+    },
+    {
+      uid: 'i2',
+      productUid: 'p2',
+      name: 'Pastel',
+      qty: 1,
+      salePrice: 8,
+      batchId: 'b-2',
+      addedAt: 2,
+    },
+  ],
+  total: 13,
+} as never;
+
+function makeConfig(overrides: Record<string, unknown> = {}) {
+  return right({
+    name: 'Grupo',
+    printerDriver: 'browser',
+    printerPaperWidth: 80,
+    printerCodepage: 'cp860',
+    printerBatchIncludesPrevious: true,
+    ...overrides,
+  } as never);
+}
+
+function renderPrint() {
+  return renderHook(() => usePrint());
+}
+
+let configResult: ReturnType<typeof makeConfig> = makeConfig();
+let printed: Array<{ ticket: string; lines: Array<{ label: string }> }> = [];
+
 describe('usePrint', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    browserPrint.mockResolvedValue(right(undefined));
+    printed = [];
+    configResult = makeConfig();
+    readConfig.mockImplementation(async () => configResult);
+    browserPrint.mockImplementation(async (receipt: never) => {
+      printed.push(receipt as never);
+      return right(undefined);
+    });
     bluetoothPrint.mockResolvedValue(right(undefined));
     rawbtPrint.mockResolvedValue(right(undefined));
   });
@@ -310,5 +361,34 @@ describe('usePrint', () => {
     });
 
     expect(browserPrint).toHaveBeenCalled();
+  });
+
+  it('imprime a rodada com o histórico quando a configuração está ligada', async () => {
+    configResult = makeConfig({ printerBatchIncludesPrevious: true });
+    const { result } = renderPrint();
+
+    await act(async () => {
+      await result.current.printBatch(orderWithTwoBatches, 'b-2');
+    });
+
+    const receipt = printed[0];
+    expect(receipt.ticket).toBe('COMANDA 042 - Maju (Lobinha)');
+    expect(receipt.lines[0]).toEqual({
+      label: 'NOVOS PRODUTOS',
+      emphasis: true,
+    });
+  });
+
+  it('imprime só a rodada quando a configuração está desligada', async () => {
+    configResult = makeConfig({ printerBatchIncludesPrevious: false });
+    const { result } = renderPrint();
+
+    await act(async () => {
+      await result.current.printBatch(orderWithTwoBatches, 'b-2');
+    });
+
+    expect(printed[0].lines.some((line) => line.label === 'HISTORICO')).toBe(
+      false,
+    );
   });
 });
