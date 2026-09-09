@@ -1,12 +1,14 @@
-import type { Order } from '../order/order.entity';
+import type { Order, OrderItem } from '../order/order.entity';
+import type { OrderBatch } from '../order/order.rules';
+import { groupItemsByBatch } from '../order/order.rules';
 import type { Product } from '../product/product.entity';
 import type { SessionReport } from '../../application/report/report.usecases';
-import { formatMoney } from '../shared/format';
+import { formatBatchTime, formatMoney } from '../shared/format';
 import type { Receipt, ReceiptLine } from './receipt.entity';
 
-function orderItemLines(order: Order): ReceiptLine[] {
+function itemLines(items: OrderItem[]): ReceiptLine[] {
   const lines: ReceiptLine[] = [];
-  for (const item of order.items) {
+  for (const item of items) {
     const customizationTotal = item.customizationTotal ?? 0;
     lines.push({
       label: item.name,
@@ -30,25 +32,56 @@ export function buildOrderReceipt(
     businessName,
     ticket: order.ticket,
     customerName: order.customerName,
-    lines: orderItemLines(order),
+    lines: itemLines(order.items),
     total: order.total,
     footer: 'Pagar no caixa',
     printedAt,
   };
 }
 
-export function buildTabNumberReceipt(
+function batchLines(batches: OrderBatch[]): ReceiptLine[] {
+  return batches.flatMap((batch) => [
+    { label: formatBatchTime(batch.addedAt) },
+    ...itemLines(batch.items),
+  ]);
+}
+
+function receiptHeading(order: Order): string {
+  const label = 'COMANDA ' + order.ticket;
+  return order.customerName ? label + ' - ' + order.customerName : label;
+}
+
+export interface BatchReceiptOptions {
+  includePrevious: boolean;
+}
+
+export function buildBatchReceipt(
   order: Order,
+  batchId: string,
+  options: BatchReceiptOptions,
   businessName: string,
   printedAt: number,
 ): Receipt {
+  const batches = groupItemsByBatch(order.items);
+  const current = batches.filter((batch) => batch.batchId === batchId);
+  const previous = batches.filter((batch) => batch.batchId !== batchId);
+  const showSections = options.includePrevious && previous.length > 0;
+
+  const lines: ReceiptLine[] = showSections
+    ? [
+        { label: 'NOVOS PRODUTOS', emphasis: true },
+        ...batchLines(current),
+        { label: 'HISTORICO', emphasis: true },
+        ...batchLines(previous),
+      ]
+    : batchLines(current);
+
   return {
     title: 'Comanda',
     businessName,
-    ticket: order.ticket,
-    customerName: order.customerName,
-    lines: [],
-    footer: 'Guarde este número',
+    ticket: receiptHeading(order),
+    lines,
+    total: order.total,
     printedAt,
   };
 }

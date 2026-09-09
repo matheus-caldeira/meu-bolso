@@ -3,11 +3,11 @@ import type { Order } from '../order/order.entity';
 import type { Product } from '../product/product.entity';
 import type { SessionReport } from '../../application/report/report.usecases';
 import {
+  buildBatchReceipt,
   buildDayReportReceipt,
   buildOrderReceipt,
   buildPendingTabsReceipt,
   buildStockReceipt,
-  buildTabNumberReceipt,
 } from './receipt.builders';
 
 function makeOrder(overrides: Partial<Order> = {}): Order {
@@ -17,8 +17,22 @@ function makeOrder(overrides: Partial<Order> = {}): Order {
     businessTypeId: 'scout',
     sessionUid: 's-1',
     items: [
-      { name: 'Cachorro', salePrice: 10, costPrice: 4, qty: 2 },
-      { name: 'Refri', salePrice: 5, costPrice: 2, qty: 1 },
+      {
+        name: 'Cachorro',
+        salePrice: 10,
+        costPrice: 4,
+        qty: 2,
+        batchId: 'b-1',
+        addedAt: new Date(2026, 8, 9, 19, 2).getTime(),
+      },
+      {
+        name: 'Refri',
+        salePrice: 5,
+        costPrice: 2,
+        qty: 1,
+        batchId: 'b-2',
+        addedAt: new Date(2026, 8, 9, 20, 15).getTime(),
+      },
     ],
     total: 25,
     paymentMethod: null,
@@ -32,19 +46,6 @@ function makeOrder(overrides: Partial<Order> = {}): Order {
     ...overrides,
   };
 }
-
-describe('buildTabNumberReceipt', () => {
-  it('monta o cupom só com número e nome, sem itens nem total', () => {
-    const receipt = buildTabNumberReceipt(makeOrder(), 'Grupo Escoteiro', 1000);
-
-    expect(receipt.ticket).toBe('042');
-    expect(receipt.customerName).toBe('Maju (Lobinha)');
-    expect(receipt.lines).toEqual([]);
-    expect(receipt.total).toBeUndefined();
-    expect(receipt.footer).toBe('Guarde este número');
-    expect(receipt.printedAt).toBe(1000);
-  });
-});
 
 describe('buildOrderReceipt', () => {
   it('monta o cupom com número, nome, itens e total', () => {
@@ -247,5 +248,135 @@ describe('buildDayReportReceipt', () => {
     expect(receipt.lines.some((line) => line.label === 'Comandas pagas')).toBe(
       true,
     );
+  });
+});
+
+describe('buildBatchReceipt', () => {
+  const previousAt = new Date(2026, 8, 9, 19, 2).getTime();
+  const currentAt = new Date(2026, 8, 9, 20, 15).getTime();
+
+  it('identifica a comanda com número e nome numa linha só', () => {
+    const receipt = buildBatchReceipt(
+      makeOrder(),
+      'b-2',
+      { includePrevious: false },
+      'Grupo Escoteiro',
+      1000,
+    );
+
+    expect(receipt.ticket).toBe('COMANDA 042 - Maju (Lobinha)');
+    expect(receipt.customerName).toBeUndefined();
+  });
+
+  it('identifica só pelo número quando não há nome', () => {
+    const receipt = buildBatchReceipt(
+      makeOrder({ customerName: '' }),
+      'b-2',
+      { includePrevious: false },
+      'Grupo Escoteiro',
+      1000,
+    );
+
+    expect(receipt.ticket).toBe('COMANDA 042');
+  });
+
+  it('sem histórico, lista só os itens da rodada com o total acumulado', () => {
+    const receipt = buildBatchReceipt(
+      makeOrder(),
+      'b-2',
+      { includePrevious: false },
+      'Grupo Escoteiro',
+      1000,
+    );
+
+    expect(receipt.lines).toEqual([
+      { label: '20h15' },
+      { label: 'Refri', qty: 1, value: 'R$ 5,00' },
+    ]);
+    expect(receipt.total).toBe(25);
+  });
+
+  it('com histórico, separa novos produtos do que já havia', () => {
+    const receipt = buildBatchReceipt(
+      makeOrder(),
+      'b-2',
+      { includePrevious: true },
+      'Grupo Escoteiro',
+      1000,
+    );
+
+    expect(receipt.lines).toEqual([
+      { label: 'NOVOS PRODUTOS', emphasis: true },
+      { label: '20h15' },
+      { label: 'Refri', qty: 1, value: 'R$ 5,00' },
+      { label: 'HISTORICO', emphasis: true },
+      { label: '19h02' },
+      { label: 'Cachorro', qty: 2, value: 'R$ 20,00' },
+    ]);
+    expect(receipt.total).toBe(25);
+  });
+
+  it('omite os rótulos de seção quando a rodada é a única', () => {
+    const order = makeOrder({
+      items: [
+        {
+          name: 'Cachorro',
+          salePrice: 10,
+          costPrice: 4,
+          qty: 2,
+          batchId: 'b-1',
+          addedAt: previousAt,
+        },
+      ],
+      total: 20,
+    });
+
+    const receipt = buildBatchReceipt(
+      order,
+      'b-1',
+      { includePrevious: true },
+      'Grupo Escoteiro',
+      1000,
+    );
+
+    expect(receipt.lines).toEqual([
+      { label: '19h02' },
+      { label: 'Cachorro', qty: 2, value: 'R$ 20,00' },
+    ]);
+    expect(receipt.total).toBe(20);
+  });
+
+  it('lista os adicionais abaixo do item', () => {
+    const order = makeOrder({
+      items: [
+        {
+          name: 'Cachorro',
+          salePrice: 10,
+          costPrice: 4,
+          qty: 1,
+          batchId: 'b-1',
+          addedAt: currentAt,
+          customizations: [
+            { groupName: 'Extras', name: 'Bacon', qty: 1, price: 2 },
+          ],
+          customizationTotal: 2,
+        },
+      ],
+      total: 12,
+    });
+
+    const receipt = buildBatchReceipt(
+      order,
+      'b-1',
+      { includePrevious: false },
+      'Grupo Escoteiro',
+      1000,
+    );
+
+    expect(receipt.lines).toEqual([
+      { label: '20h15' },
+      { label: 'Cachorro', qty: 1, value: 'R$ 12,00' },
+      { label: '  + Bacon' },
+    ]);
   });
 });
