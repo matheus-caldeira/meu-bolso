@@ -5,8 +5,11 @@ import { Button } from '../atoms/Button';
 import { Money } from '../atoms/Money';
 import { QtyStepper } from '../atoms/QtyStepper';
 import { Modal } from '../molecules/Modal';
-import { formatDateTime } from '../../domain/shared/format';
-import { calculateOrderTotal } from '../../domain/order/order.rules';
+import { formatBatchTime, formatDateTime } from '../../domain/shared/format';
+import {
+  calculateOrderTotal,
+  groupItemsByBatch,
+} from '../../domain/order/order.rules';
 import type {
   Order,
   OrderItem,
@@ -73,6 +76,8 @@ export function OrderDetail({
   const displayedTotal = canEdit
     ? calculateOrderTotal(draftItems)
     : order.total;
+  const batches = groupItemsByBatch(draftItems);
+  const showBatchHeader = batches.length > 1;
 
   useEffect(() => {
     setDraftItems(order.items);
@@ -138,73 +143,93 @@ export function OrderDetail({
         <h3 className="text-xs font-bold uppercase tracking-wide text-ink-tertiary">
           Itens
         </h3>
-        {draftItems.map((item, index) => {
-          const unitTotal = item.salePrice + (item.customizationTotal ?? 0);
-          return (
-            <div
-              key={index}
-              className="flex flex-col gap-1 rounded-md border border-border bg-surface-2 px-4 py-3"
-            >
-              <div className="flex items-center justify-between">
-                <span className="font-semibold text-ink-primary">
-                  <span className="font-mono tabular-nums">{item.qty}x</span>{' '}
-                  {item.name}
-                </span>
-                <div className="flex items-center gap-3">
-                  {canEdit && (
-                    <QtyStepper
-                      qty={item.qty}
-                      onDecrement={() => decrementItem(index)}
-                      onIncrement={() => incrementItem(index)}
-                      size="sm"
-                    />
-                  )}
-                  <Money value={unitTotal * item.qty} className="font-bold" />
-                </div>
-              </div>
-
-              {item.customizations && item.customizations.length > 0 && (
-                <div className="flex flex-col gap-0.5 text-sm text-ink-secondary">
-                  {item.customizations.map((customization, itemIndex) => (
-                    <div key={itemIndex}>
-                      <span className="text-ink-tertiary">
-                        {customization.groupName}:
+        {batches.map((batch) => (
+          <div
+            key={batch.batchId || batch.addedAt}
+            className="flex flex-col gap-2"
+          >
+            {showBatchHeader && (
+              <span className="font-mono text-xs tabular-nums text-ink-tertiary">
+                {formatBatchTime(batch.addedAt)}
+              </span>
+            )}
+            {batch.items.map((item) => {
+              const index = draftItems.indexOf(item);
+              const unitTotal = item.salePrice + (item.customizationTotal ?? 0);
+              return (
+                <div
+                  key={index}
+                  className="flex flex-col gap-1 rounded-md border border-border bg-surface-2 px-4 py-3"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-ink-primary">
+                      <span className="font-mono tabular-nums">
+                        {item.qty}x
                       </span>{' '}
-                      <span>
-                        {customization.qty > 1 ? `${customization.qty}x ` : ''}
-                        {customization.name}
-                        {customization.price > 0 && (
+                      {item.name}
+                    </span>
+                    <div className="flex items-center gap-3">
+                      {canEdit && (
+                        <QtyStepper
+                          qty={item.qty}
+                          onDecrement={() => decrementItem(index)}
+                          onIncrement={() => incrementItem(index)}
+                          size="sm"
+                        />
+                      )}
+                      <Money
+                        value={unitTotal * item.qty}
+                        className="font-bold"
+                      />
+                    </div>
+                  </div>
+
+                  {item.customizations && item.customizations.length > 0 && (
+                    <div className="flex flex-col gap-0.5 text-sm text-ink-secondary">
+                      {item.customizations.map((customization, itemIndex) => (
+                        <div key={itemIndex}>
                           <span className="text-ink-tertiary">
-                            {' '}
-                            (+
-                            <Money value={customization.price} />)
+                            {customization.groupName}:
+                          </span>{' '}
+                          <span>
+                            {customization.qty > 1
+                              ? `${customization.qty}x `
+                              : ''}
+                            {customization.name}
+                            {customization.price > 0 && (
+                              <span className="text-ink-tertiary">
+                                {' '}
+                                (+
+                                <Money value={customization.price} />)
+                              </span>
+                            )}
                           </span>
-                        )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {item.observation && (
+                    <div className="text-sm italic text-ink-tertiary">
+                      {item.observation}
+                    </div>
+                  )}
+
+                  {(item.customizationTotal ?? 0) > 0 && (
+                    <div className="flex justify-between text-xs text-ink-muted">
+                      <span>
+                        Produto: <Money value={item.salePrice} />
+                      </span>
+                      <span>
+                        Adicionais: +<Money value={item.customizationTotal!} />
                       </span>
                     </div>
-                  ))}
+                  )}
                 </div>
-              )}
-
-              {item.observation && (
-                <div className="text-sm italic text-ink-tertiary">
-                  {item.observation}
-                </div>
-              )}
-
-              {(item.customizationTotal ?? 0) > 0 && (
-                <div className="flex justify-between text-xs text-ink-muted">
-                  <span>
-                    Produto: <Money value={item.salePrice} />
-                  </span>
-                  <span>
-                    Adicionais: +<Money value={item.customizationTotal!} />
-                  </span>
-                </div>
-              )}
-            </div>
-          );
-        })}
+              );
+            })}
+          </div>
+        ))}
       </div>
 
       <div className="flex items-center justify-between rounded-md border border-border-emphasis bg-surface-inset px-4 py-3">

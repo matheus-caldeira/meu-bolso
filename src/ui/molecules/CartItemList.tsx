@@ -4,6 +4,8 @@ import { Button } from '../atoms/Button';
 import { Money } from '../atoms/Money';
 import { QtyStepper } from '../atoms/QtyStepper';
 import { Modal } from './Modal';
+import { formatBatchTime } from '../../domain/shared/format';
+import { groupItemsByBatch } from '../../domain/order/order.rules';
 import type { CartItem } from '../hooks/usePdvController';
 
 interface CartItemListProps {
@@ -46,65 +48,77 @@ export function CartItemList({
     );
   }
 
+  const batches = groupItemsByBatch(cart);
+  const showBatchHeader = batches.length > 1;
+
   return (
     <>
-      {cart.map((item) => (
-        <div
-          key={item.cartId}
-          className="border-b border-border py-3 last:border-b-0"
-        >
-          <div className="mb-2 flex justify-between">
-            <span className="text-sm font-semibold">{item.name}</span>
-            <span className="text-xs text-ink-tertiary">
-              <Money value={itemUnitTotal(item)} /> un.
+      {batches.map((batch) => (
+        <div key={batch.batchId || batch.addedAt}>
+          {showBatchHeader && (
+            <span className="font-mono text-xs tabular-nums text-ink-tertiary">
+              {formatBatchTime(batch.addedAt)}
             </span>
-          </div>
-          {item.customizations && item.customizations.length > 0 && (
-            <div className="mb-1 flex flex-wrap gap-1">
-              {item.customizations.map((customization, index) => (
-                <span
-                  key={index}
-                  className="rounded-full bg-surface-inset px-1.5 py-px text-xs text-ink-tertiary"
-                >
-                  {customization.qty > 1 ? customization.qty + 'x ' : ''}
-                  {customization.name}
+          )}
+          {(batch.items as CartItem[]).map((item) => (
+            <div
+              key={item.cartId}
+              className="border-b border-border py-3 last:border-b-0"
+            >
+              <div className="mb-2 flex justify-between">
+                <span className="text-sm font-semibold">{item.name}</span>
+                <span className="text-xs text-ink-tertiary">
+                  <Money value={itemUnitTotal(item)} /> un.
                 </span>
-              ))}
+              </div>
+              {item.customizations && item.customizations.length > 0 && (
+                <div className="mb-1 flex flex-wrap gap-1">
+                  {item.customizations.map((customization, index) => (
+                    <span
+                      key={index}
+                      className="rounded-full bg-surface-inset px-1.5 py-px text-xs text-ink-tertiary"
+                    >
+                      {customization.qty > 1 ? customization.qty + 'x ' : ''}
+                      {customization.name}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {item.observation && (
+                <div className="mb-1 text-xs italic text-ink-tertiary">
+                  Obs: {item.observation}
+                </div>
+              )}
+              <div className="flex items-center gap-2">
+                <Money
+                  value={itemUnitTotal(item) * item.qty}
+                  className="mr-auto text-sm font-bold text-accent"
+                />
+                <button
+                  type="button"
+                  aria-label="Anotação"
+                  title="Anotação"
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-info text-info hover:bg-surface-inset"
+                  onClick={() => openObsEdit(item.cartId)}
+                >
+                  <MessageSquare size={13} />
+                </button>
+                <QtyStepper
+                  qty={item.qty}
+                  onDecrement={() => onUpdateQty(item.cartId, -1)}
+                  onIncrement={() => onUpdateQty(item.cartId, 1)}
+                />
+                <button
+                  type="button"
+                  aria-label="Remover item"
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-danger text-danger hover:bg-surface-inset"
+                  onClick={() => onRemoveItem(item.cartId)}
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
             </div>
-          )}
-          {item.observation && (
-            <div className="mb-1 text-xs italic text-ink-tertiary">
-              Obs: {item.observation}
-            </div>
-          )}
-          <div className="flex items-center gap-2">
-            <Money
-              value={itemUnitTotal(item) * item.qty}
-              className="mr-auto text-sm font-bold text-accent"
-            />
-            <button
-              type="button"
-              aria-label="Anotação"
-              title="Anotação"
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-info text-info hover:bg-surface-inset"
-              onClick={() => openObsEdit(item.cartId)}
-            >
-              <MessageSquare size={13} />
-            </button>
-            <QtyStepper
-              qty={item.qty}
-              onDecrement={() => onUpdateQty(item.cartId, -1)}
-              onIncrement={() => onUpdateQty(item.cartId, 1)}
-            />
-            <button
-              type="button"
-              aria-label="Remover item"
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-danger text-danger hover:bg-surface-inset"
-              onClick={() => onRemoveItem(item.cartId)}
-            >
-              <Trash2 size={14} />
-            </button>
-          </div>
+          ))}
         </div>
       ))}
 

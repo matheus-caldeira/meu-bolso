@@ -584,6 +584,53 @@ describe('OrderDetail', () => {
     ]);
   });
 
+  it('agrupa os itens da comanda por horário de lançamento', () => {
+    const order = makeOrder({
+      items: [
+        {
+          name: 'Cachorro',
+          salePrice: 10,
+          costPrice: 4,
+          qty: 2,
+          batchId: 'b-1',
+          addedAt: new Date(2026, 8, 9, 19, 2).getTime(),
+        },
+        {
+          name: 'Refri',
+          salePrice: 5,
+          costPrice: 2,
+          qty: 1,
+          batchId: 'b-2',
+          addedAt: new Date(2026, 8, 9, 20, 15).getTime(),
+        },
+      ],
+    });
+
+    renderDetail(order);
+
+    expect(screen.getByText('19h02')).toBeInTheDocument();
+    expect(screen.getByText('20h15')).toBeInTheDocument();
+  });
+
+  it('não mostra cabeçalho de horário quando há uma só rodada', () => {
+    const order = makeOrder({
+      items: [
+        {
+          name: 'Cachorro',
+          salePrice: 10,
+          costPrice: 4,
+          qty: 2,
+          batchId: 'b-1',
+          addedAt: new Date(2026, 8, 9, 19, 2).getTime(),
+        },
+      ],
+    });
+
+    renderDetail(order);
+
+    expect(screen.queryByText('19h02')).not.toBeInTheDocument();
+  });
+
   it('não oferece edição em comanda fechada', () => {
     render(
       <OrderDetail
