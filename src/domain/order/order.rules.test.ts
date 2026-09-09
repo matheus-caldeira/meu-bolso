@@ -11,6 +11,7 @@ import {
   canReopen,
   diffStockByProduct,
   findOpenTabForCustomer,
+  groupItemsByBatch,
   mergeOrderItems,
   nextStage,
   prevStage,
@@ -547,6 +548,53 @@ describe('mergeOrderItems com rodadas', () => {
     );
 
     expect(merged).toHaveLength(2);
+  });
+});
+
+describe('groupItemsByBatch', () => {
+  it('agrupa itens por rodada, em ordem cronológica', () => {
+    const items: OrderItem[] = [
+      {
+        name: 'Coca',
+        salePrice: 5,
+        costPrice: 2,
+        qty: 1,
+        batchId: 'b-2',
+        addedAt: 2000,
+      },
+      {
+        name: 'Pastel',
+        salePrice: 6,
+        costPrice: 3,
+        qty: 2,
+        batchId: 'b-1',
+        addedAt: 1000,
+      },
+      {
+        name: 'Coca',
+        salePrice: 5,
+        costPrice: 2,
+        qty: 1,
+        batchId: 'b-1',
+        addedAt: 1000,
+      },
+    ];
+
+    const batches = groupItemsByBatch(items);
+
+    expect(batches).toHaveLength(2);
+    expect(batches[0].batchId).toBe('b-1');
+    expect(batches[0].addedAt).toBe(1000);
+    expect(batches[0].items.map((entry) => entry.name)).toEqual([
+      'Pastel',
+      'Coca',
+    ]);
+    expect(batches[1].batchId).toBe('b-2');
+    expect(batches[1].items).toHaveLength(1);
+  });
+
+  it('devolve lista vazia quando não há itens', () => {
+    expect(groupItemsByBatch([])).toEqual([]);
   });
 });
 

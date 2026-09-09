@@ -178,6 +178,29 @@ export function mergeOrderItems(
   return merged;
 }
 
+export interface OrderBatch {
+  batchId: string;
+  addedAt: number;
+  items: OrderItem[];
+}
+
+export function groupItemsByBatch(items: OrderItem[]): OrderBatch[] {
+  const batches = new Map<string, OrderBatch>();
+  for (const item of items) {
+    const batch = batches.get(item.batchId);
+    if (batch) {
+      batch.items.push(item);
+      continue;
+    }
+    batches.set(item.batchId, {
+      batchId: item.batchId,
+      addedAt: item.addedAt,
+      items: [item],
+    });
+  }
+  return [...batches.values()].sort((a, b) => a.addedAt - b.addedAt);
+}
+
 function totalsByProduct(items: OrderItem[]): Map<string, number> {
   const totals = new Map<string, number>();
   for (const item of items) {
