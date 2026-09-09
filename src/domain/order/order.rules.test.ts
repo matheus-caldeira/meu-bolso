@@ -498,6 +498,58 @@ describe('diffStockByProduct', () => {
   });
 });
 
+describe('mergeOrderItems com rodadas', () => {
+  function item(overrides: Partial<OrderItem> = {}): OrderItem {
+    return {
+      productUid: 'p-1',
+      name: 'Coca',
+      salePrice: 5,
+      costPrice: 2,
+      qty: 1,
+      batchId: 'b-1',
+      addedAt: 1000,
+      ...overrides,
+    };
+  }
+
+  it('soma a quantidade de itens iguais da mesma rodada', () => {
+    const merged = mergeOrderItems([item({ qty: 1 })], [item({ qty: 2 })]);
+
+    expect(merged).toHaveLength(1);
+    expect(merged[0].qty).toBe(3);
+  });
+
+  it('mantém itens iguais de rodadas diferentes em linhas separadas', () => {
+    const merged = mergeOrderItems(
+      [item({ batchId: 'b-1', addedAt: 1000, qty: 1 })],
+      [item({ batchId: 'b-2', addedAt: 2000, qty: 1 })],
+    );
+
+    expect(merged).toHaveLength(2);
+    expect(merged[0].batchId).toBe('b-1');
+    expect(merged[1].batchId).toBe('b-2');
+    expect(merged[1].addedAt).toBe(2000);
+  });
+
+  it('separa itens de produtos diferentes na mesma rodada', () => {
+    const merged = mergeOrderItems(
+      [item({ productUid: 'p-1', name: 'Coca' })],
+      [item({ productUid: 'p-2', name: 'Pastel' })],
+    );
+
+    expect(merged).toHaveLength(2);
+  });
+
+  it('não funde itens com observações diferentes na mesma rodada', () => {
+    const merged = mergeOrderItems(
+      [item({ observation: 'sem gelo' })],
+      [item({ observation: 'com gelo' })],
+    );
+
+    expect(merged).toHaveLength(2);
+  });
+});
+
 describe('findOpenTabForCustomer', () => {
   function makeOrderWithCustomer(overrides: Partial<Order>): Order {
     return {

@@ -155,6 +155,7 @@ function itemSignature(item: OrderItem): string {
     item.costPrice,
     item.observation ?? '',
     customizations,
+    item.batchId,
   ].join('#');
 }
 
