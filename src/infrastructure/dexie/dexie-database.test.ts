@@ -241,7 +241,7 @@ describe('migração v6', () => {
     const db = new PDVDatabase();
     await db.open();
 
-    expect(db.verno).toBe(10);
+    expect(db.verno).toBe(11);
 
     const products = await db.products.toArray();
     expect(products).toHaveLength(1);
@@ -331,7 +331,7 @@ describe('migração v10', () => {
     const db = new PDVDatabase();
     await db.open();
 
-    expect(db.verno).toBe(10);
+    expect(db.verno).toBe(11);
 
     const config = await db.config.toArray();
     expect(config).toHaveLength(1);
@@ -388,12 +388,87 @@ describe('migração v9', () => {
     const db = new PDVDatabase();
     await db.open();
 
-    expect(db.verno).toBe(10);
+    expect(db.verno).toBe(11);
 
     const products = await db.products.toArray();
     expect(products).toHaveLength(1);
     expect(products[0].uid).toBe('product-uid');
     expect(products[0].tracksStock).toBe(true);
+
+    db.close();
+    await db.delete();
+  });
+});
+
+describe('migração v11', () => {
+  it('preenche a rodada dos itens antigos com a criação do pedido ao migrar de v10', async () => {
+    globalThis.indexedDB = new IDBFactory();
+
+    const legacy = new Dexie('pdv_v2');
+    legacy.version(10).stores({
+      products: '++id, &uid, name, category, active',
+      orders: '++id, &uid, sessionUid, status, paymentMethod, createdAt, stage',
+      sessions: '++id, &uid, openedAt, closedAt',
+      cashMovements: '++id, &uid, sessionUid, type',
+      config: '++id',
+      customizationGroups: '++id, &uid, name',
+      customizationItems: '++id, &uid, groupUid, active',
+      customers: '++id, &uid, phone, name',
+      financeMembers: '++id, &uid',
+      financeCategories: '++id, &uid, kind',
+      financeEntries:
+        '++id, &uid, month, categoryUid, sourceUid, status, invoiceUid, paymentMethodUid, invoiceMonth',
+      financeBudgetItems: '++id, &uid, categoryUid',
+      financeFormulas: '++id, &uid',
+      financeRecurrences: '++id, &uid',
+      financeInstallmentPlans: '++id, &uid',
+      financeClosings: '++id, &uid, &month',
+      financePaymentMethods: '++id, &uid, type, archived',
+      financeCardInvoices:
+        '++id, &uid, paymentMethodUid, month, [paymentMethodUid+month]',
+    });
+    await legacy.open();
+
+    await legacy.table('orders').add({
+      uid: 'tab-legacy',
+      businessTypeId: 'scout',
+      sessionUid: 's-1',
+      items: [{ name: 'Coca', salePrice: 5, costPrice: 2, qty: 1 }],
+      total: 5,
+      paymentMethod: null,
+      customerName: 'Maju',
+      customerPhone: '',
+      ticket: '001',
+      stage: 'aceito',
+      status: 'open',
+      createdAt: 1700,
+      updatedAt: 1700,
+    });
+    await legacy.table('config').add({
+      id: 1,
+      name: 'Loja da Maju',
+      document: '',
+      phone: '',
+      address: '',
+      ticketCounter: 1,
+      ticketLimit: 9999,
+      ticketAutoReset: true,
+      statusControlEnabled: false,
+      businessTypeId: '',
+      extra: {},
+      layoutMode: 'auto',
+    });
+    legacy.close();
+
+    const db = new PDVDatabase();
+    await db.open();
+
+    expect(db.verno).toBe(11);
+
+    const orders = await db.orders.toArray();
+    expect(orders).toHaveLength(1);
+    expect(orders[0].items[0].batchId).toBe('tab-legacy#1700');
+    expect(orders[0].items[0].addedAt).toBe(1700);
 
     db.close();
     await db.delete();

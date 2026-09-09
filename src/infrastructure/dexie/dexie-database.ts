@@ -310,5 +310,22 @@ export class PDVDatabase extends Dexie {
             if (config.layoutMode == null) config.layoutMode = 'auto';
           });
       });
+    this.version(11)
+      .stores({
+        orders:
+          '++id, &uid, sessionUid, status, paymentMethod, createdAt, stage',
+      })
+      .upgrade(async (tx) => {
+        await tx
+          .table('orders')
+          .toCollection()
+          .modify((order) => {
+            const batchId = order.uid + '#' + order.createdAt;
+            for (const item of order.items ?? []) {
+              if (item.batchId == null) item.batchId = batchId;
+              if (item.addedAt == null) item.addedAt = order.createdAt;
+            }
+          });
+      });
   }
 }
