@@ -65,6 +65,7 @@ interface PrinterFormState {
   printerPaperWidth: PaperWidth;
   printerCodepage: PrinterCodepage;
   printerAutoPrintOnClose: boolean;
+  printerBatchIncludesPrevious: boolean;
 }
 
 const ENTITIES: { key: BackupEntity; label: string }[] = [
@@ -104,6 +105,7 @@ function toPrinterFormState(config: BusinessConfig): PrinterFormState {
     printerPaperWidth: config.printerPaperWidth,
     printerCodepage: config.printerCodepage,
     printerAutoPrintOnClose: config.printerAutoPrintOnClose,
+    printerBatchIncludesPrevious: config.printerBatchIncludesPrevious,
   };
 }
 
@@ -645,6 +647,26 @@ export function SettingsPage() {
           >
             <option value="0">Não - apenas manual</option>
             <option value="1">Sim - ao fechar pedido</option>
+          </Select>
+        </FormField>
+        <FormField
+          label="Incluir itens anteriores no papel da comanda"
+          hint="O cliente vê tudo que já pediu e retira de uma vez só."
+        >
+          <Select
+            value={printerForm.printerBatchIncludesPrevious ? '1' : '0'}
+            onChange={(e) =>
+              setPrinterForm(
+                (p) =>
+                  p && {
+                    ...p,
+                    printerBatchIncludesPrevious: e.target.value === '1',
+                  },
+              )
+            }
+          >
+            <option value="0">Não - só os itens da rodada</option>
+            <option value="1">Sim - histórico completo</option>
           </Select>
         </FormField>
         <div className="flex flex-wrap gap-2">

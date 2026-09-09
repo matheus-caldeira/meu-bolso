@@ -23,6 +23,7 @@ export interface BusinessConfig {
   printerPaperWidth: PaperWidth;
   printerCodepage: PrinterCodepage;
   printerAutoPrintOnClose: boolean;
+  printerBatchIncludesPrevious: boolean;
   layoutMode: LayoutMode;
   lastBackupAt?: number;
   lastBackupPromptAt?: number;

@@ -90,6 +90,7 @@ const CONFIG: BusinessConfig = {
   printerPaperWidth: 80,
   printerCodepage: 'cp860',
   printerAutoPrintOnClose: false,
+  printerBatchIncludesPrevious: true,
   layoutMode: 'auto',
 };
 
@@ -643,11 +644,33 @@ describe('SettingsPage', () => {
         printerPaperWidth: 58,
         printerCodepage: 'cp860',
         printerAutoPrintOnClose: true,
+        printerBatchIncludesPrevious: true,
       }),
     );
     await waitFor(() =>
       expect(screen.getByRole('status')).toHaveTextContent(
         'Configurações de impressão salvas',
+      ),
+    );
+  });
+
+  it('permite desligar o histórico no papel da comanda', async () => {
+    renderPage();
+    await waitFor(() =>
+      expect(screen.getByLabelText('Tipo de Conexão')).toBeInTheDocument(),
+    );
+
+    await userEvent.selectOptions(
+      screen.getByLabelText('Incluir itens anteriores no papel da comanda'),
+      '0',
+    );
+    await userEvent.click(
+      screen.getAllByRole('button', { name: 'Salvar' }).at(-1)!,
+    );
+
+    await waitFor(() =>
+      expect(savePrinterConfig).toHaveBeenCalledWith(
+        expect.objectContaining({ printerBatchIncludesPrevious: false }),
       ),
     );
   });

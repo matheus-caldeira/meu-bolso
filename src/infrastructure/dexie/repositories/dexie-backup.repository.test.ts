@@ -68,6 +68,7 @@ const businessConfig = (name: string): BusinessConfig => ({
   printerPaperWidth: 80,
   printerCodepage: 'cp860',
   printerAutoPrintOnClose: false,
+  printerBatchIncludesPrevious: true,
   layoutMode: 'auto',
 });
 

@@ -314,6 +314,7 @@ export class PDVDatabase extends Dexie {
       .stores({
         orders:
           '++id, &uid, sessionUid, status, paymentMethod, createdAt, stage',
+        config: '++id',
       })
       .upgrade(async (tx) => {
         await tx
@@ -324,6 +325,15 @@ export class PDVDatabase extends Dexie {
             for (const item of order.items ?? []) {
               if (item.batchId == null) item.batchId = batchId;
               if (item.addedAt == null) item.addedAt = order.createdAt;
+            }
+          });
+
+        await tx
+          .table('config')
+          .toCollection()
+          .modify((config) => {
+            if (config.printerBatchIncludesPrevious == null) {
+              config.printerBatchIncludesPrevious = true;
             }
           });
       });

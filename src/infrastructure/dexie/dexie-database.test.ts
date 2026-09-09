@@ -470,6 +470,10 @@ describe('migração v11', () => {
     expect(orders[0].items[0].batchId).toBe('tab-legacy#1700');
     expect(orders[0].items[0].addedAt).toBe(1700);
 
+    const config = await db.config.toArray();
+    expect(config).toHaveLength(1);
+    expect(config[0].printerBatchIncludesPrevious).toBe(true);
+
     db.close();
     await db.delete();
   });

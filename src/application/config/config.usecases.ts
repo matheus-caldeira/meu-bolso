@@ -36,6 +36,7 @@ export interface PrinterConfigInput {
   printerPaperWidth: PaperWidth;
   printerCodepage: PrinterCodepage;
   printerAutoPrintOnClose: boolean;
+  printerBatchIncludesPrevious: boolean;
 }
 
 export function makeReadConfig(repository: ConfigRepository) {

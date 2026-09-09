@@ -39,6 +39,7 @@ const config: BusinessConfig = {
   printerPaperWidth: 80,
   printerCodepage: 'cp860',
   printerAutoPrintOnClose: false,
+  printerBatchIncludesPrevious: true,
   layoutMode: 'auto',
 };
 
@@ -117,6 +118,7 @@ describe('makeSavePrinterConfig', () => {
       printerPaperWidth: 58,
       printerCodepage: 'cp860',
       printerAutoPrintOnClose: true,
+      printerBatchIncludesPrevious: true,
     });
     expect(isRight(result)).toBe(true);
     expect(repo.saved).toEqual({
@@ -124,6 +126,7 @@ describe('makeSavePrinterConfig', () => {
       printerPaperWidth: 58,
       printerCodepage: 'cp860',
       printerAutoPrintOnClose: true,
+      printerBatchIncludesPrevious: true,
     });
   });
 });
