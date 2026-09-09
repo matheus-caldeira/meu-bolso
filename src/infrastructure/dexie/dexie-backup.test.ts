@@ -273,6 +273,8 @@ describe('DexieBackupRepository', () => {
       salePrice: 10,
       costPrice: 5,
       qty: 2,
+      batchId: 'undefined#1',
+      addedAt: 1,
     });
     expect(stored[0].customerName).toBe('Zé');
   });

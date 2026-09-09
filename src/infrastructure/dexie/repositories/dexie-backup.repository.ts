@@ -13,6 +13,7 @@ import type {
 import type { InfrastructureError } from '../../errors';
 import type { PDVDatabase } from '../dexie-database';
 import { toInfrastructureError } from '../dexie-errors';
+import { backfillOrderItemBatch } from '../order-item-batch-backfill';
 
 type Row = Record<string, unknown>;
 
@@ -165,6 +166,9 @@ export class DexieBackupRepository implements BackupRepository {
         delete copy.id;
         return copy;
       });
+      if (entity === 'orders') {
+        cleaned.forEach((item) => backfillOrderItemBatch(item));
+      }
       await this.db.table(entity).bulkAdd(cleaned);
       return right(cleaned.length);
     } catch (cause) {

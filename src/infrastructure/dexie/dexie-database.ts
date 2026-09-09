@@ -22,6 +22,7 @@ import type {
   CardInvoice,
   PaymentMethod,
 } from '../../domain/finance/payment-method.entity';
+import { backfillOrderItemBatch } from './order-item-batch-backfill';
 
 export type {
   CustomizationGroup,
@@ -321,11 +322,7 @@ export class PDVDatabase extends Dexie {
           .table('orders')
           .toCollection()
           .modify((order) => {
-            const batchId = order.uid + '#' + order.createdAt;
-            for (const item of order.items ?? []) {
-              if (item.batchId == null) item.batchId = batchId;
-              if (item.addedAt == null) item.addedAt = order.createdAt;
-            }
+            backfillOrderItemBatch(order);
           });
 
         await tx
