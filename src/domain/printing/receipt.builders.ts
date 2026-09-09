@@ -65,7 +65,8 @@ export function buildBatchReceipt(
   const batches = groupItemsByBatch(order.items);
   const current = batches.filter((batch) => batch.batchId === batchId);
   const previous = batches.filter((batch) => batch.batchId !== batchId);
-  const showSections = options.includePrevious && previous.length > 0;
+  const showSections =
+    options.includePrevious && current.length > 0 && previous.length > 0;
 
   const lines: ReceiptLine[] = showSections
     ? [
@@ -74,7 +75,7 @@ export function buildBatchReceipt(
         { label: 'HISTORICO', emphasis: true },
         ...batchLines(previous),
       ]
-    : batchLines(current);
+    : batchLines(options.includePrevious ? [...current, ...previous] : current);
 
   return {
     title: 'Comanda',

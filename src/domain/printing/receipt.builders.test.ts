@@ -348,6 +348,24 @@ describe('buildBatchReceipt', () => {
     expect(receipt.total).toBe(20);
   });
 
+  it('sem itens na rodada atual, lista só o histórico sem nenhum rótulo de seção', () => {
+    const receipt = buildBatchReceipt(
+      makeOrder(),
+      'b-3',
+      { includePrevious: true },
+      'Grupo Escoteiro',
+      1000,
+    );
+
+    expect(receipt.lines).toEqual([
+      { label: '19h02' },
+      { label: 'Cachorro', qty: 2, value: 'R$ 20,00' },
+      { label: '20h15' },
+      { label: 'Refri', qty: 1, value: 'R$ 5,00' },
+    ]);
+    expect(receipt.total).toBe(25);
+  });
+
   it('lista os adicionais abaixo do item', () => {
     const order = makeOrder({
       items: [
