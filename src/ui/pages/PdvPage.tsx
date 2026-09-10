@@ -151,12 +151,14 @@ function PdvSession({ sessionUid }: { sessionUid: string }) {
       toast('Defina um nome para o cliente.', 'error');
       return;
     }
+    const batchId = createUid();
     const opened = await openTab(name, {
       customerUid: controller.matchedCustomer?.uid,
+      items: stampBatch(controller.cart, batchId, Date.now()),
     });
     if (!opened) return;
     setSelectedTabUid(opened.uid);
-    setOpenedTab({ order: opened, batchId: createUid() });
+    setOpenedTab({ order: opened, batchId });
     void refreshTabs();
   }
 

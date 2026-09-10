@@ -7,7 +7,12 @@ import {
   shouldClaimTicket,
 } from '../../domain/config/config.rules';
 import { createUid } from '../../domain/shared/uid';
-import type { NewOrder, Order } from '../../domain/order/order.entity';
+import { calculateOrderTotal } from '../../domain/order/order.rules';
+import type {
+  NewOrder,
+  Order,
+  OrderItem,
+} from '../../domain/order/order.entity';
 import type { BusinessTypeDefinition } from '../../domain/business-type/registry';
 import type { Repositories } from '../../domain/shared/repositories';
 import type { UnitOfWork } from '../../domain/shared/unit-of-work';
@@ -18,6 +23,7 @@ export interface OpenTabInput {
   customerName: string;
   customerUid?: string;
   ticket?: string;
+  items?: OrderItem[];
 }
 
 const DRAFT_KEY = 'draftTab';
@@ -46,14 +52,15 @@ export class OpenTabUseCase extends UseCase<OpenTabInput, Order> {
 
     const customerUid = await this.resolveCustomer(input);
 
+    const items = input.items ?? [];
     const now = Date.now();
     const draft: NewOrder = {
       uid: createUid(),
       businessTypeId: this.definition.id,
       sessionUid: input.sessionUid,
       customerUid,
-      items: [],
-      total: 0,
+      items,
+      total: calculateOrderTotal(items),
       paymentMethod: null,
       customerName: input.customerName.trim(),
       customerPhone: '',
@@ -72,6 +79,17 @@ export class OpenTabUseCase extends UseCase<OpenTabInput, Order> {
     repositories: Repositories,
   ): Promise<Either<AppError, Order>> {
     const draft = this.context.get<NewOrder>(DRAFT_KEY) as NewOrder;
+
+    const stock = await repositories.products.adjustStock(
+      draft.items
+        .filter((item) => item.productUid !== undefined)
+        .map((item) => ({
+          productUid: item.productUid as string,
+          qty: item.qty,
+        })),
+    );
+    if (isLeft(stock)) return stock;
+
     return repositories.orders.create(draft);
   }
 

@@ -905,6 +905,55 @@ describe('PdvPage', () => {
     expect(navigate).not.toHaveBeenCalledWith('/orders');
   });
 
+  it('abre comanda levando os itens do carrinho', async () => {
+    getActiveSession.mockResolvedValue(
+      right({ id: 3, uid: 'session-3', closedAt: null }),
+    );
+    openTab.mockResolvedValue(right(openTabFixture));
+    const user = userEvent.setup();
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Coca')).toBeInTheDocument());
+    await user.click(screen.getByRole('button', { name: /coca/i }));
+    await user.type(screen.getByRole('combobox', { name: 'Cliente' }), 'Maju');
+    await user.click(screen.getByRole('button', { name: /nova comanda/i }));
+
+    await waitFor(() => expect(openTab).toHaveBeenCalled());
+    const input = openTab.mock.calls[0][1] as { items: OrderItem[] };
+    expect(input.items).toHaveLength(1);
+    expect(input.items[0].name).toBe('Coca');
+    expect(input.items[0].qty).toBe(1);
+  });
+
+  it('carimba os itens da comanda com o lote impresso', async () => {
+    getActiveSession.mockResolvedValue(
+      right({ id: 3, uid: 'session-3', closedAt: null }),
+    );
+    openTab.mockImplementation(
+      (_definition: unknown, input: { items: OrderItem[] }) =>
+        Promise.resolve(right({ ...openTabFixture, items: input.items })),
+    );
+    const user = userEvent.setup();
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('Coca')).toBeInTheDocument());
+    await user.click(screen.getByRole('button', { name: /coca/i }));
+    await user.type(screen.getByRole('combobox', { name: 'Cliente' }), 'Maju');
+    await user.click(screen.getByRole('button', { name: /nova comanda/i }));
+
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Comanda aberta',
+    });
+    await user.click(
+      within(dialog).getByRole('button', { name: /Imprimir comanda/ }),
+    );
+
+    await waitFor(() => expect(printBatch).toHaveBeenCalled());
+    const input = openTab.mock.calls[0][1] as { items: OrderItem[] };
+    expect(input.items[0].batchId).not.toBe('');
+    expect(printBatch.mock.calls[0][1]).toBe(input.items[0].batchId);
+  });
+
   it('não abre comanda sem cliente informado', async () => {
     getActiveSession.mockResolvedValue(
       right({ id: 3, uid: 'session-3', closedAt: null }),
