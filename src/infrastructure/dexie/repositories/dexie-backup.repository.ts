@@ -9,7 +9,13 @@ import type {
   BackupFormat,
   BackupRepository,
   BackupSnapshot,
+  ImportAllResult,
+  ImportMode,
 } from '../../../domain/backup/backup.repository';
+import {
+  detectEntityByFileName,
+  detectEntityByHeaders,
+} from '../../../domain/backup/entity-detection';
 import type { InfrastructureError } from '../../errors';
 import type { PDVDatabase } from '../dexie-database';
 import { toInfrastructureError } from '../dexie-errors';
@@ -68,6 +74,32 @@ const SNAPSHOT_TABLES: (keyof BackupSnapshot)[] = [
   'customizationGroups',
   'customizationItems',
 ];
+
+const IMPORT_ORDER: BackupEntity[] = [
+  'config',
+  'customizationGroups',
+  'customizationItems',
+  'products',
+  'customers',
+  'sessions',
+  'orders',
+  'cashMovements',
+  'financeMembers',
+  'financeCategories',
+  'financePaymentMethods',
+  'financeCardInvoices',
+  'financeFormulas',
+  'financeRecurrences',
+  'financeInstallmentPlans',
+  'financeBudgetItems',
+  'financeEntries',
+  'financeClosings',
+];
+
+interface ParsedFile {
+  entity: BackupEntity;
+  rows: Row[];
+}
 
 export interface FileSaver {
   save(content: string, filename: string, type: string): void;
@@ -184,6 +216,84 @@ export class DexieBackupRepository implements BackupRepository {
     }
   }
 
+  async importAll(
+    files: File[],
+    mode: ImportMode,
+  ): Promise<Either<InfrastructureError, ImportAllResult>> {
+    try {
+      const skipped: string[] = [];
+      const rowsByEntity = new Map<BackupEntity, Row[]>();
+
+      for (const file of files) {
+        const parsed = await readBackupFile(file);
+        if (parsed.length === 0) {
+          skipped.push(file.name);
+          continue;
+        }
+        for (const { entity, rows } of parsed) {
+          const current = rowsByEntity.get(entity) ?? [];
+          rowsByEntity.set(entity, [...current, ...rows]);
+        }
+      }
+
+      const imported = await this.applySnapshot(rowsByEntity, mode);
+      return right({ imported, skipped });
+    } catch (cause) {
+      return left(toInfrastructureError(cause));
+    }
+  }
+
+  private async applySnapshot(
+    rowsByEntity: Map<BackupEntity, Row[]>,
+    mode: ImportMode,
+  ): Promise<Partial<Record<BackupEntity, number>>> {
+    const imported: Partial<Record<BackupEntity, number>> = {};
+    await this.db.transaction('rw', this.db.tables, async () => {
+      if (mode === 'replace') {
+        await Promise.all(this.db.tables.map((table) => table.clear()));
+      }
+      for (const entity of IMPORT_ORDER) {
+        const rows = rowsByEntity.get(entity);
+        if (!rows || rows.length === 0) continue;
+        const cleaned = rows.map(stripId);
+        if (entity === 'orders') {
+          cleaned.forEach((row) => backfillOrderItemBatch(row));
+        }
+        if (entity === 'config') {
+          await this.putConfig(cleaned);
+        } else {
+          await this.putByUid(entity, cleaned);
+        }
+        imported[entity] = cleaned.length;
+      }
+    });
+    return imported;
+  }
+
+  private async putConfig(rows: Row[]): Promise<void> {
+    const table = this.db.table('config');
+    const existing = (await table.toArray()) as Row[];
+    const currentId = existing[0]?.id;
+    const [first] = rows;
+    await table.clear();
+    await table.put(currentId == null ? first : { ...first, id: currentId });
+  }
+
+  private async putByUid(entity: BackupEntity, rows: Row[]): Promise<void> {
+    const table = this.db.table(entity);
+    const merged = await Promise.all(
+      rows.map(async (row) => {
+        const uid = row.uid;
+        if (typeof uid !== 'string') return row;
+        const existing = (await table.where('uid').equals(uid).first()) as
+          | Row
+          | undefined;
+        return existing?.id == null ? row : { ...row, id: existing.id };
+      }),
+    );
+    await table.bulkPut(merged);
+  }
+
   async hasData(): Promise<Either<InfrastructureError, boolean>> {
     try {
       const counts = await Promise.all(
@@ -227,6 +337,47 @@ export class DexieBackupRepository implements BackupRepository {
       return left(toInfrastructureError(cause));
     }
   }
+}
+
+function stripId(row: Row): Row {
+  const copy = { ...row };
+  delete copy.id;
+  return copy;
+}
+
+async function readBackupFile(file: File): Promise<ParsedFile[]> {
+  const text = await file.text();
+  return file.name.toLowerCase().endsWith('.csv')
+    ? readCsvFile(file.name, text)
+    : readJsonFile(file.name, text);
+}
+
+function readCsvFile(fileName: string, text: string): ParsedFile[] {
+  const entity =
+    detectEntityByFileName(fileName) ??
+    detectEntityByHeaders(readHeaders(text));
+  if (!entity) return [];
+  const rows = parseCsv(text, entity);
+  return [{ entity, rows }];
+}
+
+function readHeaders(text: string): string[] {
+  const records = tokenizeCsv(text.replace(/\r\n/g, '\n').replace(/\n+$/, ''));
+  return records.length === 0
+    ? []
+    : records[0].map((field) => field.value.trim());
+}
+
+function readJsonFile(fileName: string, text: string): ParsedFile[] {
+  const parsed: unknown = JSON.parse(text);
+  if (Array.isArray(parsed)) {
+    const entity = detectEntityByFileName(fileName);
+    return entity ? [{ entity, rows: parsed as Row[] }] : [];
+  }
+  const record = parsed as Record<string, unknown>;
+  return IMPORT_ORDER.filter((entity) => Array.isArray(record[entity])).map(
+    (entity) => ({ entity, rows: record[entity] as Row[] }),
+  );
 }
 
 function extractItems(parsed: unknown, entity: BackupEntity): Row[] {

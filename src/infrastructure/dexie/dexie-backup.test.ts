@@ -469,6 +469,243 @@ describe('DexieBackupRepository', () => {
     expect(stored[0].name).toBe('Minha Loja');
   });
 
+  describe('importAll', () => {
+    it('importa um backup JSON inteiro identificando as entidades', async () => {
+      const repo = new DexieBackupRepository(db, new FakeFileSaver());
+      const snapshot = JSON.stringify({
+        products: [product({ uid: 'p-1', name: 'Coca' })],
+        customers: [
+          { uid: 'c-1', name: 'Maju', phone: '', createdAt: 1, updatedAt: 1 },
+        ],
+        exportedAt: 1,
+        version: 1,
+      });
+
+      const result = await repo.importAll(
+        [new File([snapshot], 'pdv-backup.json')],
+        'merge',
+      );
+
+      expect(isRight(result)).toBe(true);
+      expect(isRight(result) && result.right.imported.products).toBe(1);
+      expect(isRight(result) && result.right.imported.customers).toBe(1);
+      expect(await db.products.count()).toBe(1);
+      expect(await db.customers.count()).toBe(1);
+    });
+
+    it('importa vários CSV de uma vez', async () => {
+      const repo = new DexieBackupRepository(db, new FakeFileSaver());
+      const files = [
+        new File(['uid,name,category\np-1,Coca,Bebidas'], 'pdv-products.csv'),
+        new File(['uid,name,phone\nc-1,Maju,999'], 'pdv-customers.csv'),
+      ];
+
+      const result = await repo.importAll(files, 'merge');
+
+      expect(isRight(result) && result.right.imported.products).toBe(1);
+      expect(isRight(result) && result.right.imported.customers).toBe(1);
+    });
+
+    it('identifica a entidade pelo cabeçalho quando o nome não ajuda', async () => {
+      const repo = new DexieBackupRepository(db, new FakeFileSaver());
+
+      const result = await repo.importAll(
+        [
+          new File(
+            ['uid,name,category,salePrice\np-1,Coca,Bebidas,5'],
+            'x.csv',
+          ),
+        ],
+        'merge',
+      );
+
+      expect(isRight(result) && result.right.imported.products).toBe(1);
+      expect(isRight(result) && result.right.skipped).toEqual([]);
+    });
+
+    it('reporta arquivos não reconhecidos sem importá-los', async () => {
+      const repo = new DexieBackupRepository(db, new FakeFileSaver());
+
+      const result = await repo.importAll(
+        [new File(['a,b\n1,2'], 'planilha.csv')],
+        'merge',
+      );
+
+      expect(isRight(result) && result.right.skipped).toEqual(['planilha.csv']);
+      expect(isRight(result) && result.right.imported).toEqual({});
+    });
+
+    it('reporta um JSON sem nenhuma entidade conhecida', async () => {
+      const repo = new DexieBackupRepository(db, new FakeFileSaver());
+
+      const result = await repo.importAll(
+        [new File([JSON.stringify({ outra: [] })], 'coisa.json')],
+        'merge',
+      );
+
+      expect(isRight(result) && result.right.skipped).toEqual(['coisa.json']);
+    });
+
+    it('importa um JSON de entidade única identificado pelo nome', async () => {
+      const repo = new DexieBackupRepository(db, new FakeFileSaver());
+      const snapshot = JSON.stringify([product({ uid: 'p-1' })]);
+
+      const result = await repo.importAll(
+        [new File([snapshot], 'pdv-products.json')],
+        'merge',
+      );
+
+      expect(isRight(result) && result.right.imported.products).toBe(1);
+    });
+
+    it('não duplica ao importar o mesmo backup duas vezes', async () => {
+      const repo = new DexieBackupRepository(db, new FakeFileSaver());
+      const file = () =>
+        new File(['uid,name,category\np-1,Coca,Bebidas'], 'pdv-products.csv');
+
+      await repo.importAll([file()], 'merge');
+      await repo.importAll([file()], 'merge');
+
+      expect(await db.products.count()).toBe(1);
+    });
+
+    it('substitui a configuração existente no modo somar', async () => {
+      await db.config.add({ name: 'Antiga' } as never);
+      const repo = new DexieBackupRepository(db, new FakeFileSaver());
+
+      await repo.importAll(
+        [
+          new File(
+            [JSON.stringify({ config: [{ name: 'Nova' }] })],
+            'pdv-backup.json',
+          ),
+        ],
+        'merge',
+      );
+
+      const stored = await db.config.toArray();
+      expect(stored).toHaveLength(1);
+      expect(stored[0].name).toBe('Nova');
+    });
+
+    it('insere a configuração quando o aparelho ainda não tem uma', async () => {
+      const repo = new DexieBackupRepository(db, new FakeFileSaver());
+
+      await repo.importAll(
+        [
+          new File(
+            [JSON.stringify({ config: [{ name: 'Nova' }] })],
+            'pdv-backup.json',
+          ),
+        ],
+        'merge',
+      );
+
+      expect((await db.config.toArray())[0].name).toBe('Nova');
+    });
+
+    it('substitui os dados existentes no modo replace', async () => {
+      await db.products.add(product({ uid: 'antigo', name: 'Velho' }));
+      const repo = new DexieBackupRepository(db, new FakeFileSaver());
+
+      await repo.importAll(
+        [new File(['uid,name,category\np-1,Coca,Bebidas'], 'pdv-products.csv')],
+        'replace',
+      );
+
+      const stored = await db.products.toArray();
+      expect(stored).toHaveLength(1);
+      expect(stored[0].uid).toBe('p-1');
+    });
+
+    it('apaga a configuração atual no modo replace', async () => {
+      await db.config.add({ name: 'Antiga' } as never);
+      const repo = new DexieBackupRepository(db, new FakeFileSaver());
+
+      await repo.importAll(
+        [new File(['uid,name,category\np-1,Coca,Bebidas'], 'pdv-products.csv')],
+        'replace',
+      );
+
+      expect(await db.config.count()).toBe(0);
+    });
+
+    it('preserva os dados quando a importação falha no meio', async () => {
+      await db.products.add(product({ uid: 'antigo', name: 'Velho' }));
+      const repo = new DexieBackupRepository(db, new FakeFileSaver());
+
+      const result = await repo.importAll(
+        [new File(['{ json quebrado'], 'pdv-backup.json')],
+        'replace',
+      );
+
+      expect(isLeft(result)).toBe(true);
+      expect(await db.products.count()).toBe(1);
+    });
+
+    it('faz o backfill de rodada nos pedidos importados', async () => {
+      const repo = new DexieBackupRepository(db, new FakeFileSaver());
+      const snapshot = JSON.stringify({
+        orders: [
+          {
+            uid: 'ord-1',
+            createdAt: 1700,
+            items: [{ name: 'Coca', salePrice: 5, costPrice: 2, qty: 1 }],
+          },
+        ],
+      });
+
+      await repo.importAll([new File([snapshot], 'pdv-backup.json')], 'merge');
+
+      const [order] = await db.orders.toArray();
+      expect(order.items[0].batchId).toBe('ord-1#1700');
+    });
+
+    it('importa os grupos antes dos itens de adicionais', async () => {
+      const repo = new DexieBackupRepository(db, new FakeFileSaver());
+      const files = [
+        new File(
+          ['uid,groupUid,name,price\ni-1,g-1,Bacon,3'],
+          'pdv-customizationItems.csv',
+        ),
+        new File(
+          ['uid,name,required,minQty,maxQty\ng-1,Adicionais,false,0,1'],
+          'pdv-customizationGroups.csv',
+        ),
+      ];
+
+      const result = await repo.importAll(files, 'merge');
+
+      expect(isRight(result)).toBe(true);
+      expect((await db.customizationGroups.toArray())[0].uid).toBe('g-1');
+      expect((await db.customizationItems.toArray())[0].uid).toBe('i-1');
+    });
+
+    it('ignora entidades vazias na contagem', async () => {
+      const repo = new DexieBackupRepository(db, new FakeFileSaver());
+
+      const result = await repo.importAll(
+        [new File([JSON.stringify({ products: [] })], 'pdv-backup.json')],
+        'merge',
+      );
+
+      expect(isRight(result) && result.right.imported).toEqual({});
+      expect(isRight(result) && result.right.skipped).toEqual([]);
+    });
+
+    it('devolve Left quando o banco falha', async () => {
+      const repo = new DexieBackupRepository(db, new FakeFileSaver());
+      db.close();
+
+      const result = await repo.importAll(
+        [new File(['uid,name,category\np-1,Coca,Bebidas'], 'pdv-products.csv')],
+        'merge',
+      );
+
+      expect(isLeft(result)).toBe(true);
+    });
+  });
+
   it('returns Left when the database fails', async () => {
     const repo = new DexieBackupRepository(db, new FakeFileSaver());
     db.close();

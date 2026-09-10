@@ -81,6 +81,7 @@ import {
   makeLoadDemo,
   makeWipeData,
 } from '../application/backup/backup.usecases';
+import { makeImportAllBackup } from '../application/backup/import-all.usecase';
 import {
   makeCreateMember,
   makeDeleteMember,
@@ -241,6 +242,7 @@ export function createContainer() {
     exportBackup: makeExportBackup(backup),
     exportEntity: makeExportEntity(backup),
     importBackup: makeImportBackup(backup),
+    importAllBackup: makeImportAllBackup(backup),
     hasData: makeHasData(backup),
     loadDemo: makeLoadDemo(backup),
     wipeData: makeWipeData(backup),
