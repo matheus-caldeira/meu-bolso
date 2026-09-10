@@ -6,14 +6,15 @@ import type { Receipt } from '../../domain/printing/receipt.entity';
 interface ReceiptPreviewProps {
   receipt: Receipt | null;
   paperWidth: PaperWidth;
+  visible?: boolean;
 }
 
 export const ReceiptPreview = forwardRef<HTMLDivElement, ReceiptPreviewProps>(
-  function ReceiptPreview({ receipt, paperWidth }, ref) {
+  function ReceiptPreview({ receipt, paperWidth, visible = false }, ref) {
     if (!receipt) return null;
 
     return (
-      <div className="hidden">
+      <div className={visible ? 'flex justify-center' : 'hidden'}>
         <div
           ref={ref}
           data-receipt=""

@@ -89,4 +89,24 @@ describe('ReceiptPreview', () => {
 
     expect(root).toHaveStyle({ width: '58mm' });
   });
+
+  it('esconde o cupom da página por padrão', () => {
+    const { container } = render(
+      <ReceiptPreview receipt={receipt} paperWidth={80} />,
+    );
+
+    const root = container.querySelector('[data-receipt]');
+
+    expect(root?.parentElement).toHaveClass('hidden');
+  });
+
+  it('mostra o cupom na página quando visível', () => {
+    const { container } = render(
+      <ReceiptPreview receipt={receipt} paperWidth={80} visible />,
+    );
+
+    const root = container.querySelector('[data-receipt]');
+
+    expect(root?.parentElement).not.toHaveClass('hidden');
+  });
 });
