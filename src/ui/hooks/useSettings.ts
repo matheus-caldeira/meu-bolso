@@ -6,6 +6,7 @@ import type { ConfigInput } from '../../application/config/config.usecases';
 import type {
   BackupEntity,
   BackupFormat,
+  ImportMode,
 } from '../../domain/backup/backup.repository';
 import { useToast } from '../molecules/toast-context';
 
@@ -106,6 +107,21 @@ export function useSettings() {
     [toast],
   );
 
+  const importAll = useCallback(
+    async (files: File[], mode: ImportMode) => {
+      const result = await container.importAllBackup(files, mode);
+      return fold(
+        result,
+        (error) => {
+          toast(error.message, 'error');
+          return null;
+        },
+        (value) => value,
+      );
+    },
+    [toast],
+  );
+
   const wipe = useCallback(async () => {
     const result = await container.wipeData();
     return fold(
@@ -150,6 +166,7 @@ export function useSettings() {
     exportAll,
     exportOne,
     importOne,
+    importAll,
     checkHasData,
     importDemo,
     wipe,

@@ -1,4 +1,4 @@
-import { useState, type ChangeEvent, type ReactNode } from 'react';
+import { useRef, useState, type ChangeEvent, type ReactNode } from 'react';
 import {
   Download,
   Upload,
@@ -34,7 +34,13 @@ import {
   type PrinterCodepage,
   type PrinterDriver,
 } from '../../domain/printing/printer-driver';
-import type { BackupEntity } from '../../domain/backup/backup.repository';
+import type {
+  BackupEntity,
+  ImportAllResult,
+  ImportMode,
+} from '../../domain/backup/backup.repository';
+import { BACKUP_ENTITY_LABELS } from '../i18n/backup-entity-labels';
+import { ImportAllModal } from '../organisms/ImportAllModal';
 
 const MODULE_LABELS: Record<ModuleId, string> = {
   pdv: 'Ponto de Venda',
@@ -68,26 +74,9 @@ interface PrinterFormState {
   printerBatchIncludesPrevious: boolean;
 }
 
-const ENTITIES: { key: BackupEntity; label: string }[] = [
-  { key: 'products', label: 'Produtos' },
-  { key: 'orders', label: 'Pedidos' },
-  { key: 'sessions', label: 'Sessões' },
-  { key: 'cashMovements', label: 'Movimentações' },
-  { key: 'financeMembers', label: 'Membros da família' },
-  { key: 'financeCategories', label: 'Categorias financeiras' },
-  { key: 'financeEntries', label: 'Lançamentos' },
-  { key: 'financeBudgetItems', label: 'Itens de orçamento' },
-  { key: 'financeFormulas', label: 'Fórmulas' },
-  { key: 'financeRecurrences', label: 'Recorrências' },
-  { key: 'financeInstallmentPlans', label: 'Parcelamentos' },
-  { key: 'financeClosings', label: 'Fechamentos' },
-  { key: 'financePaymentMethods', label: 'Meios de pagamento' },
-  { key: 'financeCardInvoices', label: 'Faturas de cartão' },
-  { key: 'customers', label: 'Clientes' },
-  { key: 'customizationGroups', label: 'Grupos de adicionais' },
-  { key: 'customizationItems', label: 'Itens de adicionais' },
-  { key: 'config', label: 'Configuração' },
-];
+const ENTITIES: { key: BackupEntity; label: string }[] = (
+  Object.keys(BACKUP_ENTITY_LABELS) as BackupEntity[]
+).map((key) => ({ key, label: BACKUP_ENTITY_LABELS[key] }));
 
 function toFormState(config: BusinessConfig): FormState {
   return {
@@ -154,6 +143,7 @@ export function SettingsPage() {
     exportAll,
     exportOne,
     importOne,
+    importAll,
     checkHasData,
     importDemo,
     wipe,
@@ -162,6 +152,11 @@ export function SettingsPage() {
   const [printerForm, setPrinterForm] = useState<PrinterFormState | null>(null);
   const [importTarget, setImportTarget] = useState<BackupEntity>('products');
   const [importFile, setImportFile] = useState<File | null>(null);
+  const [importAllFiles, setImportAllFiles] = useState<File[]>([]);
+  const [importAllResult, setImportAllResult] =
+    useState<ImportAllResult | null>(null);
+  const [importingAll, setImportingAll] = useState(false);
+  const importAllInput = useRef<HTMLInputElement>(null);
   const [fileKey, setFileKey] = useState(0);
   const [resetValue, setResetValue] = useState('1');
   const [resetModalOpen, setResetModalOpen] = useState(false);
@@ -263,6 +258,26 @@ export function SettingsPage() {
       setImportFile(null);
       setFileKey((k) => k + 1);
     }
+  }
+
+  function handleImportAllFiles(event: ChangeEvent<HTMLInputElement>) {
+    setImportAllResult(null);
+    setImportAllFiles(Array.from(event.target.files ?? []));
+  }
+
+  async function handleImportAll(mode: ImportMode) {
+    setImportingAll(true);
+    const result = await importAll(importAllFiles, mode);
+    setImportingAll(false);
+    if (result) setImportAllResult(result);
+  }
+
+  function closeImportAll() {
+    const done = importAllResult !== null;
+    setImportAllFiles([]);
+    setImportAllResult(null);
+    setFileKey((k) => k + 1);
+    if (done) window.location.reload();
   }
 
   async function handleWipe() {
@@ -520,9 +535,33 @@ export function SettingsPage() {
       </Section>
 
       <Section icon={<Upload size={20} />} title="Importar Dados">
+        <div className="flex flex-col gap-2 rounded-md border border-border bg-surface-inset p-3">
+          <p className="text-sm text-ink-secondary">
+            Restaure um backup inteiro de uma vez. Escolha o{' '}
+            <strong>pdv-backup.json</strong> ou vários arquivos CSV juntos — nós
+            identificamos cada tipo de dado sozinhos.
+          </p>
+          <input
+            key={`all-${fileKey}`}
+            ref={importAllInput}
+            type="file"
+            multiple
+            accept=".json,.csv"
+            aria-label="Arquivos do backup"
+            onChange={handleImportAllFiles}
+            className="hidden"
+          />
+          <Button
+            className="self-start"
+            onClick={() => importAllInput.current?.click()}
+          >
+            <Upload size={16} /> Importar tudo
+          </Button>
+        </div>
+
         <p className="text-sm text-ink-tertiary">
-          Importe dados de um arquivo JSON ou CSV. Selecione o tipo de dado e o
-          arquivo.
+          Ou importe um tipo de dado por vez, a partir de um arquivo JSON ou
+          CSV.
         </p>
         <FormField label="Tipo de Dado">
           <Select
@@ -794,6 +833,14 @@ export function SettingsPage() {
           </Button>
         </div>
       </Modal>
+
+      <ImportAllModal
+        files={importAllFiles}
+        result={importAllResult}
+        importing={importingAll}
+        onConfirm={handleImportAll}
+        onClose={closeImportAll}
+      />
     </div>
   );
 }
