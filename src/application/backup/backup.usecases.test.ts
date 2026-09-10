@@ -5,6 +5,7 @@ import type {
   BackupFormat,
   BackupRepository,
   BackupSnapshot,
+  ImportAllResult,
 } from '../../domain/backup/backup.repository';
 import type { InfrastructureError } from '../../infrastructure/errors';
 import {
@@ -46,6 +47,9 @@ class FakeBackupRepository implements BackupRepository {
   ): Promise<Either<InfrastructureError, number>> {
     this.imported = { entity, file };
     return right(3);
+  }
+  async importAll(): Promise<Either<InfrastructureError, ImportAllResult>> {
+    return right({ imported: {}, skipped: [] });
   }
   async hasData(): Promise<Either<InfrastructureError, boolean>> {
     return right(true);

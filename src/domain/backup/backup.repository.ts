@@ -34,6 +34,13 @@ export interface BackupSnapshot {
   customizationItems?: unknown[];
 }
 
+export type ImportMode = 'replace' | 'merge';
+
+export interface ImportAllResult {
+  imported: Partial<Record<BackupEntity, number>>;
+  skipped: string[];
+}
+
 export interface BackupRepository {
   buildSnapshot(): Promise<Either<InfrastructureError, string>>;
   exportAll(format: BackupFormat): Promise<Either<InfrastructureError, void>>;
@@ -45,6 +52,10 @@ export interface BackupRepository {
     entity: BackupEntity,
     file: File,
   ): Promise<Either<InfrastructureError, number>>;
+  importAll(
+    files: File[],
+    mode: ImportMode,
+  ): Promise<Either<InfrastructureError, ImportAllResult>>;
   hasData(): Promise<Either<InfrastructureError, boolean>>;
   importDemo(data: BackupSnapshot): Promise<Either<InfrastructureError, void>>;
   wipeAll(): Promise<Either<InfrastructureError, void>>;
