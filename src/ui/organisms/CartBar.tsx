@@ -109,45 +109,41 @@ export function CartBar({
         />
       </div>
 
-      <div className="flex items-center justify-between px-4 pb-3 pt-2">
-        <div className="flex items-center gap-2">
-          <IconButton
-            size="md"
-            aria-label="Cadastrar cliente"
-            onClick={onCreateCustomer}
+      <div className="flex items-stretch gap-2 px-4 pb-3 pt-2">
+        {ordering !== 'none' && (
+          <Button
+            variant="ghost"
+            className="min-h-14 flex-1"
+            aria-label={
+              selectedTab
+                ? `Lançar na comanda nº ${selectedTab.ticket}`
+                : 'Abrir comanda'
+            }
+            disabled={selectedTab ? !hasItems : false}
+            onClick={onOpenTab}
           >
-            <User size={18} />
-          </IconButton>
-          {ordering !== 'none' && (
-            <IconButton
-              size="md"
-              aria-label={
-                selectedTab
-                  ? `Lançar na comanda nº ${selectedTab.ticket}`
-                  : 'Abrir comanda'
-              }
-              disabled={selectedTab ? !hasItems : false}
-              onClick={onOpenTab}
-            >
-              <Receipt size={18} />
-            </IconButton>
-          )}
-          <IconButton
-            size="md"
-            aria-label="Finalizar venda"
-            disabled={!hasItems}
-            onClick={onFinalize}
-          >
-            <CreditCard size={18} />
-          </IconButton>
-        </div>
-
+            <Receipt size={20} className="shrink-0" />
+            <span className="truncate">
+              {selectedTab ? 'Lançar' : 'Abrir comanda'}
+            </span>
+          </Button>
+        )}
+        <Button
+          className="min-h-14 flex-[2]"
+          aria-label="Finalizar venda"
+          disabled={!hasItems}
+          onClick={onFinalize}
+        >
+          <CreditCard size={20} className="shrink-0" />
+          Finalizar
+        </Button>
         <IconButton
-          size="md"
+          size="lg"
+          className="min-h-14 shrink-0"
           aria-label="Mais ações"
           onClick={() => setMenuOpen(true)}
         >
-          <MoreVertical size={18} />
+          <MoreVertical size={20} />
         </IconButton>
       </div>
 
@@ -158,8 +154,18 @@ export function CartBar({
       >
         <div className="flex flex-col gap-2">
           <Button
+            variant="ghost"
+            fullWidth
+            className="min-h-14"
+            onClick={() => runAndClose(onCreateCustomer)}
+          >
+            <User size={20} />
+            Cadastrar cliente
+          </Button>
+          <Button
             variant="danger"
             fullWidth
+            className="min-h-14"
             disabled={!hasItems}
             onClick={() => runAndClose(onClearCart)}
           >

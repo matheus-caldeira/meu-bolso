@@ -1,10 +1,4 @@
-import {
-  useEffect,
-  useRef,
-  useState,
-  type ButtonHTMLAttributes,
-  type MouseEvent,
-} from 'react';
+import { useEffect, useRef, useState, type ButtonHTMLAttributes } from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '../lib/cn';
 
@@ -19,6 +13,7 @@ const iconButton = cva(
       size: {
         sm: 'h-8 w-8',
         md: 'h-9 w-9',
+        lg: 'h-11 w-11',
       },
     },
     defaultVariants: {
@@ -44,7 +39,6 @@ export function IconButton({
   const label = props['aria-label'];
   const [tooltipOpen, setTooltipOpen] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const suppressClickRef = useRef(false);
 
   useEffect(() => {
     return () => {
@@ -61,10 +55,8 @@ export function IconButton({
 
   function handlePointerDown() {
     if (!label) return;
-    suppressClickRef.current = false;
     clearTimer();
     timerRef.current = setTimeout(() => {
-      suppressClickRef.current = true;
       setTooltipOpen(true);
     }, LONG_PRESS_MS);
   }
@@ -72,15 +64,6 @@ export function IconButton({
   function dismiss() {
     clearTimer();
     setTooltipOpen(false);
-  }
-
-  function handleClick(event: MouseEvent<HTMLButtonElement>) {
-    if (suppressClickRef.current) {
-      suppressClickRef.current = false;
-      event.preventDefault();
-      return;
-    }
-    onClick?.(event);
   }
 
   return (
@@ -93,7 +76,7 @@ export function IconButton({
         onPointerUp={dismiss}
         onPointerLeave={dismiss}
         onPointerCancel={dismiss}
-        onClick={handleClick}
+        onClick={onClick}
         {...props}
       />
       {tooltipOpen && label && (

@@ -206,15 +206,55 @@ describe('CartBar', () => {
     expect(props.onFinalize).toHaveBeenCalledTimes(1);
   });
 
-  it('abre o cadastro de cliente pelo ícone', async () => {
+  it('abre o cadastro de cliente pelo menu de mais ações', async () => {
     const props = baseProps();
     render(<CartBar {...props} />);
 
+    await userEvent.click(screen.getByRole('button', { name: 'Mais ações' }));
     await userEvent.click(
       screen.getByRole('button', { name: 'Cadastrar cliente' }),
     );
 
     expect(props.onCreateCustomer).toHaveBeenCalledTimes(1);
+  });
+
+  it('fecha o menu depois de escolher uma ação', async () => {
+    const props = baseProps();
+    render(<CartBar {...props} />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Mais ações' }));
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Cadastrar cliente' }),
+    );
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('mantém finalizar e comanda com rótulo visível na barra', () => {
+    render(<CartBar {...baseProps()} cart={[item]} total={15} />);
+
+    expect(screen.getByText('Finalizar')).toBeInTheDocument();
+    expect(screen.getByText('Abrir comanda')).toBeInTheDocument();
+  });
+
+  it('dá à finalização o alvo de toque mais confortável da barra', () => {
+    render(<CartBar {...baseProps()} cart={[item]} total={15} />);
+
+    const finalize = screen.getByRole('button', { name: 'Finalizar venda' });
+    const more = screen.getByRole('button', { name: 'Mais ações' });
+
+    expect(finalize.className).toContain('min-h-14');
+    expect(finalize.className).toContain('flex-[2]');
+    expect(more.className).toContain('min-h-14');
+  });
+
+  it('não repete o número da comanda no botão de lançar', () => {
+    render(
+      <CartBar {...baseProps()} cart={[item]} total={15} selectedTab={tab} />,
+    );
+
+    expect(screen.getAllByText(/0012/)).toHaveLength(1);
+    expect(screen.getByText('Lançar')).toBeInTheDocument();
   });
 
   it('limpa o carrinho pelo menu de mais ações', async () => {

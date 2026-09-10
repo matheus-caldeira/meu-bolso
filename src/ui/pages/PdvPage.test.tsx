@@ -1082,17 +1082,16 @@ describe('PdvPage no celular', () => {
     await waitFor(() => expect(field).toHaveValue('Fulano'));
   });
 
-  it('chega ao cadastro de cliente pelo ícone', async () => {
+  it('chega ao cadastro de cliente pelo menu de mais ações', async () => {
     const user = userEvent.setup();
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Coca')).toBeInTheDocument());
-    await screen.findByTestId('cart-bar');
+    const bar = await screen.findByTestId('cart-bar');
 
+    await user.click(within(bar).getByRole('button', { name: 'Mais ações' }));
     await user.click(
-      within(screen.getByTestId('cart-bar')).getByRole('button', {
-        name: 'Cadastrar cliente',
-      }),
+      within(bar).getByRole('button', { name: 'Cadastrar cliente' }),
     );
 
     expect(
