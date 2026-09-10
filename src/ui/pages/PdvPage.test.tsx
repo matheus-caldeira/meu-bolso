@@ -7,6 +7,7 @@ import {
   within,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { UserEvent } from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { PdvPage } from './PdvPage';
 import { ToastProvider } from '../molecules/Toast';
@@ -85,6 +86,16 @@ function renderPage(initialEntries = ['/pdv']) {
         <PdvPage />
       </MemoryRouter>
     </ToastProvider>,
+  );
+}
+
+async function clickCartAction(user: UserEvent, name: string | RegExp) {
+  const bar = await screen.findByTestId('cart-bar');
+  await user.click(within(bar).getByRole('button', { name: 'Ações da venda' }));
+  await user.click(
+    within(
+      await screen.findByRole('dialog', { name: 'Ações da venda' }),
+    ).getByRole('button', { name }),
   );
 }
 
@@ -1082,17 +1093,13 @@ describe('PdvPage no celular', () => {
     await waitFor(() => expect(field).toHaveValue('Fulano'));
   });
 
-  it('chega ao cadastro de cliente pelo menu de mais ações', async () => {
+  it('chega ao cadastro de cliente pelo modal de ações', async () => {
     const user = userEvent.setup();
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Coca')).toBeInTheDocument());
-    const bar = await screen.findByTestId('cart-bar');
 
-    await user.click(within(bar).getByRole('button', { name: 'Mais ações' }));
-    await user.click(
-      within(bar).getByRole('button', { name: 'Cadastrar cliente' }),
-    );
+    await clickCartAction(user, 'Cadastrar cliente');
 
     expect(
       await screen.findByRole('dialog', { name: 'Novo cliente' }),
@@ -1104,11 +1111,8 @@ describe('PdvPage no celular', () => {
     renderPage();
 
     await waitFor(() => expect(screen.getByText('Coca')).toBeInTheDocument());
-    const bar = await screen.findByTestId('cart-bar');
 
-    await user.click(
-      within(bar).getByRole('button', { name: 'Abrir comanda' }),
-    );
+    await clickCartAction(user, 'Abrir comanda');
 
     expect(
       await screen.findByText('Defina um nome para o cliente.'),
@@ -1122,11 +1126,8 @@ describe('PdvPage no celular', () => {
 
     await waitFor(() => expect(screen.getByText('Coca')).toBeInTheDocument());
     await user.click(screen.getByRole('button', { name: /Coca/ }));
-    const bar = await screen.findByTestId('cart-bar');
 
-    await user.click(
-      within(bar).getByRole('button', { name: 'Finalizar venda' }),
-    );
+    await clickCartAction(user, 'Finalizar venda');
 
     expect(
       await screen.findByRole('dialog', { name: 'Identificar a venda' }),
@@ -1140,10 +1141,7 @@ describe('PdvPage no celular', () => {
 
     await waitFor(() => expect(screen.getByText('Coca')).toBeInTheDocument());
     await user.click(screen.getByRole('button', { name: /Coca/ }));
-    const bar = await screen.findByTestId('cart-bar');
-    await user.click(
-      within(bar).getByRole('button', { name: 'Finalizar venda' }),
-    );
+    await clickCartAction(user, 'Finalizar venda');
 
     const dialog = await screen.findByRole('dialog', {
       name: 'Identificar a venda',
@@ -1161,10 +1159,7 @@ describe('PdvPage no celular', () => {
 
     await waitFor(() => expect(screen.getByText('Coca')).toBeInTheDocument());
     await user.click(screen.getByRole('button', { name: /Coca/ }));
-    const bar = await screen.findByTestId('cart-bar');
-    await user.click(
-      within(bar).getByRole('button', { name: 'Finalizar venda' }),
-    );
+    await clickCartAction(user, 'Finalizar venda');
 
     const dialog = await screen.findByRole('dialog', {
       name: 'Identificar a venda',
@@ -1216,10 +1211,7 @@ describe('PdvPage no celular', () => {
 
     await waitFor(() => expect(screen.getByText('Coca')).toBeInTheDocument());
     await user.click(screen.getByRole('button', { name: /Coca/ }));
-    const bar = await screen.findByTestId('cart-bar');
-    await user.click(
-      within(bar).getByRole('button', { name: 'Finalizar venda' }),
-    );
+    await clickCartAction(user, 'Finalizar venda');
     await screen.findByRole('dialog', { name: 'Identificar a venda' });
 
     await user.keyboard('{Escape}');
@@ -1240,11 +1232,8 @@ describe('PdvPage no celular', () => {
 
     await waitFor(() => expect(screen.getByText('Coca')).toBeInTheDocument());
     await user.click(screen.getByRole('button', { name: /Coca/ }));
-    const bar = await screen.findByTestId('cart-bar');
 
-    await user.click(
-      within(bar).getByRole('button', { name: 'Lançar na comanda nº 007' }),
-    );
+    await clickCartAction(user, 'Lançar na comanda nº 007');
 
     await waitFor(() => expect(addItemsToTab).toHaveBeenCalled());
     expect(openTab).not.toHaveBeenCalled();
@@ -1265,9 +1254,7 @@ describe('PdvPage no celular', () => {
       'Fulano',
     );
 
-    await user.click(
-      within(bar).getByRole('button', { name: 'Finalizar venda' }),
-    );
+    await clickCartAction(user, 'Finalizar venda');
 
     expect(await screen.findByText('Como deseja pagar?')).toBeInTheDocument();
     expect(

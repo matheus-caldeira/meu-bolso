@@ -2,11 +2,11 @@ import { useState } from 'react';
 import {
   ChevronUp,
   CreditCard,
-  MoreVertical,
   Receipt,
+  Sparkles,
+  Trash2,
   User,
 } from 'lucide-react';
-import { IconButton } from '../atoms/IconButton';
 import { Money } from '../atoms/Money';
 import { Modal } from '../molecules/Modal';
 import { Button } from '../atoms/Button';
@@ -109,57 +109,67 @@ export function CartBar({
         />
       </div>
 
-      <div className="flex items-stretch gap-2 px-4 pb-3 pt-2">
-        {ordering !== 'none' && (
-          <Button
-            variant="ghost"
-            className="min-h-14 flex-1"
-            aria-label={
-              selectedTab
-                ? `Lançar na comanda nº ${selectedTab.ticket}`
-                : 'Abrir comanda'
-            }
-            disabled={selectedTab ? !hasItems : false}
-            onClick={onOpenTab}
-          >
-            <Receipt size={20} className="shrink-0" />
-            <span className="truncate">
-              {selectedTab ? 'Lançar' : 'Abrir comanda'}
-            </span>
-          </Button>
-        )}
+      <div className="px-4 pb-3 pt-2">
         <Button
-          className="min-h-14 flex-[2]"
-          aria-label="Finalizar venda"
-          disabled={!hasItems}
-          onClick={onFinalize}
-        >
-          <CreditCard size={20} className="shrink-0" />
-          Finalizar
-        </Button>
-        <IconButton
-          size="lg"
-          className="min-h-14 shrink-0"
-          aria-label="Mais ações"
+          fullWidth
+          className="min-h-14"
+          aria-label="Ações da venda"
           onClick={() => setMenuOpen(true)}
         >
-          <MoreVertical size={20} />
-        </IconButton>
+          <Sparkles size={20} className="shrink-0" />
+          Ações
+        </Button>
       </div>
 
       <Modal
         open={menuOpen}
         onClose={() => setMenuOpen(false)}
-        title="Mais ações"
+        title="Ações da venda"
       >
         <div className="flex flex-col gap-2">
+          <Button
+            fullWidth
+            className="min-h-14"
+            aria-label="Finalizar venda"
+            disabled={!hasItems}
+            onClick={() => runAndClose(onFinalize)}
+          >
+            <CreditCard size={20} className="shrink-0" />
+            Finalizar venda
+          </Button>
+          {ordering !== 'none' && (
+            <Button
+              variant="ghost"
+              fullWidth
+              className="min-h-14"
+              aria-label={
+                selectedTab
+                  ? `Lançar na comanda nº ${selectedTab.ticket}`
+                  : 'Abrir comanda'
+              }
+              disabled={selectedTab ? !hasItems : false}
+              onClick={() => runAndClose(onOpenTab)}
+            >
+              <Receipt size={20} className="shrink-0" />
+              {selectedTab ? (
+                <span className="truncate">
+                  Lançar na comanda{' '}
+                  <span className="font-mono font-bold tabular-nums">
+                    nº {selectedTab.ticket}
+                  </span>
+                </span>
+              ) : (
+                <span className="truncate">Abrir comanda</span>
+              )}
+            </Button>
+          )}
           <Button
             variant="ghost"
             fullWidth
             className="min-h-14"
             onClick={() => runAndClose(onCreateCustomer)}
           >
-            <User size={20} />
+            <User size={20} className="shrink-0" />
             Cadastrar cliente
           </Button>
           <Button
@@ -169,6 +179,7 @@ export function CartBar({
             disabled={!hasItems}
             onClick={() => runAndClose(onClearCart)}
           >
+            <Trash2 size={20} className="shrink-0" />
             Limpar carrinho
           </Button>
         </div>
