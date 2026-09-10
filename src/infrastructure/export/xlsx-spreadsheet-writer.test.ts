@@ -3,8 +3,8 @@ import * as XLSX from '../../vendor/xlsx/xlsx.mjs';
 import { xlsxSpreadsheetWriter } from './xlsx-spreadsheet-writer';
 
 describe('xlsxSpreadsheetWriter', () => {
-  it('gera um arquivo xlsx com uma aba por relatório e os dados no lugar', () => {
-    const bytes = xlsxSpreadsheetWriter.write({
+  it('gera um arquivo xlsx com uma aba por relatório e os dados no lugar', async () => {
+    const bytes = await xlsxSpreadsheetWriter.write({
       sheets: [
         {
           name: 'Resumo',
@@ -40,8 +40,8 @@ describe('xlsxSpreadsheetWriter', () => {
     ]);
   });
 
-  it('encurta nomes de aba acima do limite do formato', () => {
-    const bytes = xlsxSpreadsheetWriter.write({
+  it('encurta nomes de aba acima do limite do formato', async () => {
+    const bytes = await xlsxSpreadsheetWriter.write({
       sheets: [
         {
           name: 'Comandas pendentes com nome muito longo',

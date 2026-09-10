@@ -47,6 +47,7 @@ function resolveTextTransport(): {
 export function useReportExport(target: ReportExportTarget) {
   const toast = useToast();
   const [exporting, setExporting] = useState(false);
+  const [exportingSpreadsheet, setExportingSpreadsheet] = useState(false);
 
   const buildInput = useCallback(
     (sections: ReportSectionId[]): ExportReportInput => ({
@@ -63,6 +64,7 @@ export function useReportExport(target: ReportExportTarget) {
     async (sections: ReportSectionId[]): Promise<boolean> => {
       const input = buildInput(sections);
       setExporting(true);
+      setExportingSpreadsheet(true);
       try {
         const file = await container.exportReportSpreadsheet(input);
         if (isLeft(file)) {
@@ -82,6 +84,7 @@ export function useReportExport(target: ReportExportTarget) {
         return true;
       } finally {
         setExporting(false);
+        setExportingSpreadsheet(false);
       }
     },
     [buildInput, toast],
@@ -124,5 +127,11 @@ export function useReportExport(target: ReportExportTarget) {
     [toast],
   );
 
-  return { exportSpreadsheet, buildMessage, shareMessage, exporting };
+  return {
+    exportSpreadsheet,
+    buildMessage,
+    shareMessage,
+    exporting,
+    exportingSpreadsheet,
+  };
 }

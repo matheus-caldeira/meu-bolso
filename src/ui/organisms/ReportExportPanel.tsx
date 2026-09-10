@@ -32,8 +32,13 @@ const SECTIONS: { id: ReportSectionId; label: string; hint: string }[] = [
 const ALL_SECTIONS = SECTIONS.map((section) => section.id);
 
 export function ReportExportPanel({ target }: ReportExportPanelProps) {
-  const { exportSpreadsheet, buildMessage, shareMessage, exporting } =
-    useReportExport(target);
+  const {
+    exportSpreadsheet,
+    buildMessage,
+    shareMessage,
+    exporting,
+    exportingSpreadsheet,
+  } = useReportExport(target);
   const [selected, setSelected] = useState<ReportSectionId[]>(ALL_SECTIONS);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -92,7 +97,7 @@ export function ReportExportPanel({ target }: ReportExportPanelProps) {
           onClick={() => exportSpreadsheet(ordered)}
           fullWidth
         >
-          Exportar planilha
+          {exportingSpreadsheet ? 'Gerando planilha…' : 'Exportar planilha'}
         </Button>
       </div>
 

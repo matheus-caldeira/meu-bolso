@@ -1,11 +1,11 @@
-import * as XLSX from '../../vendor/xlsx/xlsx.mjs';
 import type { Workbook } from '../../domain/export/spreadsheet.entity';
 import type { SpreadsheetWriter } from '../../domain/export/spreadsheet.writer';
 
 const SHEET_NAME_LIMIT = 31;
 
 export const xlsxSpreadsheetWriter: SpreadsheetWriter = {
-  write(workbook: Workbook): Uint8Array<ArrayBuffer> {
+  async write(workbook: Workbook): Promise<Uint8Array<ArrayBuffer>> {
+    const XLSX = await import('../../vendor/xlsx/xlsx.mjs');
     const book = XLSX.utils.book_new();
     for (const sheet of workbook.sheets) {
       XLSX.utils.book_append_sheet(

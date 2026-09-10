@@ -54,7 +54,7 @@ function makeFailingProductRepository(): ProductRepository {
 function makeWriter(): SpreadsheetWriter & { last: Workbook | null } {
   const writer = {
     last: null as Workbook | null,
-    write(workbook: Workbook) {
+    async write(workbook: Workbook) {
       writer.last = workbook;
       return new Uint8Array([1, 2, 3]);
     },

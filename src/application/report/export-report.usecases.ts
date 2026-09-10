@@ -78,7 +78,9 @@ export function makeExportReportSpreadsheet(
     return right({
       name: fileName(input.day, input.generatedAt),
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      content: writer.write(buildReportWorkbook(data.right, input.sections)),
+      content: await writer.write(
+        buildReportWorkbook(data.right, input.sections),
+      ),
     });
   };
 }
