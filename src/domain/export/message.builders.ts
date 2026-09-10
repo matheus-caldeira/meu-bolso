@@ -27,7 +27,7 @@ function summaryLines(data: ReportExportData): string[] {
     labeledLine('Vendas', formatMoney(summary.totalSales)),
     labeledLine('Custo', formatMoney(summary.totalCost)),
     labeledLine('Lucro', formatMoney(summary.profit)),
-    labeledLine('Margem', summary.margin.toFixed(1) + '%'),
+    labeledLine('Margem', summary.margin.toFixed(1).replace('.', ',') + '%'),
     labeledLine('Comandas pagas', String(summary.paidCount)),
     ...(methods.length > 0
       ? [

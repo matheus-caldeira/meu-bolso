@@ -28,7 +28,7 @@ describe('buildReportMessage', () => {
     expect(message).toContain('Vendas: R$ 20,00');
     expect(message).toContain('Custo: R$ 8,00');
     expect(message).toContain('Lucro: R$ 12,00');
-    expect(message).toContain('Margem: 60.0%');
+    expect(message).toContain('Margem: 60,0%');
     expect(message).toContain('Comandas pagas: 1');
     expect(message).toContain('*Pagamentos*');
     expect(message).toContain('PIX: R$ 20,00');
