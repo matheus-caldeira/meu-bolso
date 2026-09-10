@@ -7,12 +7,14 @@ import { Autocomplete } from '../molecules/Autocomplete';
 import { SalesSummaryCards } from '../organisms/SalesSummaryCards';
 import { ProductRankingList } from '../organisms/ProductRankingList';
 import { ReceiptPreview } from '../organisms/ReceiptPreview';
+import { ReportExportPanel } from '../organisms/ReportExportPanel';
 import { useReports } from '../hooks/useReports';
 import { usePrint } from '../hooks/usePrint';
 import { useToast } from '../molecules/toast-context';
 import { container } from '../../app/container';
 import { fold, isLeft } from '../../domain/shared/either';
 import { formatTime } from '../../domain/shared/format';
+import { paymentMethodLabel } from '../../domain/export/payment-labels';
 import type { PaperWidth } from '../../domain/printing/printer-driver';
 import type { Product } from '../../domain/product/product.entity';
 import {
@@ -21,25 +23,13 @@ import {
   buildStockReceipt,
 } from '../../domain/printing/receipt.builders';
 
-const PAYMENT_LABELS: Record<string, string> = {
-  pix: 'PIX',
-  credito: 'Crédito',
-  debito: 'Débito',
-  dinheiro: 'Dinheiro',
-  pagar_depois: 'Pagar Depois',
-  outros: 'outros',
-};
-
 const TAB_ITEMS = [
   { value: 'summary', label: 'Resumo' },
   { value: 'day', label: 'Fechamento do dia' },
   { value: 'stock', label: 'Estoque' },
   { value: 'pending', label: 'Comandas pendentes' },
+  { value: 'export', label: 'Exportar' },
 ];
-
-function paymentLabel(method: string): string {
-  return PAYMENT_LABELS[method] ?? method;
-}
 
 export function ReportsPage() {
   const {
@@ -118,6 +108,14 @@ export function ReportsPage() {
   const stockReceipt = useMemo(
     () => (stock ? buildStockReceipt(stock, businessName, printedAt) : null),
     [stock, businessName, printedAt],
+  );
+
+  const exportTarget = useMemo(
+    () =>
+      selectedSessionUid !== null && selectedDay !== null
+        ? { sessionUid: selectedSessionUid, businessName, day: selectedDay }
+        : null,
+    [selectedSessionUid, selectedDay, businessName],
   );
 
   const pendingReceipt = useMemo(
@@ -233,7 +231,7 @@ export function ReportsPage() {
                           className="flex items-center gap-3 rounded-md border border-border bg-surface-2 px-4 py-2"
                         >
                           <span className="w-24 shrink-0 text-sm text-ink-secondary">
-                            {paymentLabel(method)}
+                            {paymentMethodLabel(method)}
                           </span>
                           <div className="h-2 flex-1 overflow-hidden rounded-full bg-surface-inset">
                             <div
@@ -362,6 +360,10 @@ export function ReportsPage() {
                 visible
               />
             </div>
+          )}
+
+          {tab === 'export' && exportTarget !== null && (
+            <ReportExportPanel target={exportTarget} />
           )}
         </div>
       )}

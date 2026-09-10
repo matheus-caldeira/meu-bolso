@@ -440,3 +440,27 @@ export class BackupFailedError extends DomainError {
     super('Não foi possível enviar o backup.');
   }
 }
+
+export class ShareUnavailableError extends DomainError {
+  readonly code = 'SHARE_UNAVAILABLE';
+
+  constructor() {
+    super('Este dispositivo não permite compartilhar.');
+  }
+}
+
+export class ShareFailedError extends DomainError {
+  readonly code = 'SHARE_FAILED';
+
+  constructor() {
+    super('Não foi possível compartilhar. Tente novamente.');
+  }
+}
+
+export class EmptyReportSelectionError extends DomainError {
+  readonly code = 'EMPTY_REPORT_SELECTION';
+
+  constructor() {
+    super('Selecione pelo menos um relatório.');
+  }
+}

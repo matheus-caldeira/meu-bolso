@@ -28,6 +28,15 @@ vi.mock('../../app/container', () => ({
   },
 }));
 
+const exportPanelTarget = vi.fn();
+
+vi.mock('../organisms/ReportExportPanel', () => ({
+  ReportExportPanel: ({ target }: { target: unknown }) => {
+    exportPanelTarget(target);
+    return <div>painel de exportação</div>;
+  },
+}));
+
 vi.mock('../hooks/usePrint', () => ({
   usePrint: () => ({
     printOrder: vi.fn(),
@@ -135,6 +144,7 @@ describe('ReportsPage', () => {
     printDayReport.mockReset();
     printStock.mockReset();
     printPendingTabs.mockReset();
+    exportPanelTarget.mockReset();
     listReportSessions.mockResolvedValue(right(SESSIONS));
     loadSessionReport.mockResolvedValue(right(FULL_REPORT));
     loadStockReport.mockResolvedValue(right([]));
@@ -322,6 +332,23 @@ describe('ReportsPage', () => {
       await screen.findByRole('button', { name: 'Imprimir' }),
     );
     expect(printPendingTabs).toHaveBeenCalledWith(FULL_REPORT.pending);
+  });
+
+  it('abre o painel de exportação com a sessão e o dia escolhidos', async () => {
+    renderPage();
+    await waitFor(() =>
+      expect(loadSessionReport).toHaveBeenCalledWith('session-2'),
+    );
+    await openTab('Exportar');
+
+    expect(await screen.findByText('painel de exportação')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(exportPanelTarget).toHaveBeenLastCalledWith({
+        sessionUid: 'session-2',
+        businessName: 'Grupo Escoteiro',
+        day: '09/09/2026',
+      }),
+    );
   });
 
   it('keeps the default business name when the config fails to load', async () => {

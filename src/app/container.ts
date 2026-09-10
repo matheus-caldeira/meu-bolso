@@ -73,6 +73,11 @@ import {
 } from '../application/report/report.usecases';
 import { makeLoadStockReport } from '../application/report/stock.usecases';
 import {
+  makeBuildReportMessage,
+  makeExportReportSpreadsheet,
+} from '../application/report/export-report.usecases';
+import { xlsxSpreadsheetWriter } from '../infrastructure/export/xlsx-spreadsheet-writer';
+import {
   makeBuildBackupSnapshot,
   makeExportBackup,
   makeExportEntity,
@@ -238,6 +243,12 @@ export function createContainer() {
     loadSessionReport: makeLoadSessionReport(orders),
     loadDashboard: makeLoadDashboard(orders),
     loadStockReport: makeLoadStockReport(products),
+    exportReportSpreadsheet: makeExportReportSpreadsheet(
+      orders,
+      products,
+      xlsxSpreadsheetWriter,
+    ),
+    buildReportMessage: makeBuildReportMessage(orders, products),
     buildBackupSnapshot: makeBuildBackupSnapshot(backup),
     exportBackup: makeExportBackup(backup),
     exportEntity: makeExportEntity(backup),
