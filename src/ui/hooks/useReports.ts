@@ -4,6 +4,7 @@ import { fold } from '../../domain/shared/either';
 import { formatDate } from '../../domain/shared/format';
 import type { SessionReport } from '../../application/report/report.usecases';
 import type { Session } from '../../domain/cash/cash.entity';
+import type { Order } from '../../domain/order/order.entity';
 import { useToast } from '../molecules/toast-context';
 
 function sortByRecent(sessions: Session[]): Session[] {
@@ -26,6 +27,22 @@ export function useReports() {
     null,
   );
   const [report, setReport] = useState<SessionReport | null>(null);
+  const [pendingAll, setPendingAll] = useState<Order[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    container.loadPendingAll().then((result) => {
+      if (cancelled) return;
+      fold(
+        result,
+        (error) => toast(error.message, 'error'),
+        (orders) => setPendingAll(orders),
+      );
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [toast]);
 
   useEffect(() => {
     let cancelled = false;
@@ -100,5 +117,6 @@ export function useReports() {
     selectedDay,
     selectDay,
     sessionsOfDay,
+    pendingAll,
   };
 }

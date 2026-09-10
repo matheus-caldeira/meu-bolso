@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import {
+  cleanup,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ReportsPage } from './ReportsPage';
 import { ToastProvider } from '../molecules/Toast';
@@ -14,6 +20,7 @@ import type { Product } from '../../domain/product/product.entity';
 const listReportSessions = vi.fn();
 const loadSessionReport = vi.fn();
 const loadStockReport = vi.fn();
+const loadPendingAll = vi.fn();
 const readConfig = vi.fn();
 const printDayReport = vi.fn();
 const printStock = vi.fn();
@@ -24,6 +31,7 @@ vi.mock('../../app/container', () => ({
     listReportSessions: () => listReportSessions(),
     loadSessionReport: (uid: string) => loadSessionReport(uid),
     loadStockReport: () => loadStockReport(),
+    loadPendingAll: () => loadPendingAll(),
     readConfig: () => readConfig(),
   },
 }));
@@ -117,6 +125,7 @@ const FULL_REPORT: SessionReport = {
     profit: 120,
     margin: 60,
     paidCount: 4,
+    averageTicket: 50,
   },
   byMethod: { pix: 100, mistura: 100 },
   products: [{ name: 'Coxinha', qty: 5, total: 150, cost: 50 }],
@@ -135,11 +144,16 @@ async function openTab(name: string) {
   await userEvent.click(await screen.findByRole('tab', { name }));
 }
 
+function sessionRegion() {
+  return within(screen.getByRole('region', { name: 'Relatório da sessão' }));
+}
+
 describe('ReportsPage', () => {
   beforeEach(() => {
     listReportSessions.mockReset();
     loadSessionReport.mockReset();
     loadStockReport.mockReset();
+    loadPendingAll.mockReset();
     readConfig.mockReset();
     printDayReport.mockReset();
     printStock.mockReset();
@@ -148,6 +162,7 @@ describe('ReportsPage', () => {
     listReportSessions.mockResolvedValue(right(SESSIONS));
     loadSessionReport.mockResolvedValue(right(FULL_REPORT));
     loadStockReport.mockResolvedValue(right([]));
+    loadPendingAll.mockResolvedValue(right([]));
     readConfig.mockResolvedValue(right(CONFIG));
   });
   afterEach(cleanup);
@@ -234,6 +249,73 @@ describe('ReportsPage', () => {
     expect(screen.getByText('60.0%')).toBeInTheDocument();
   });
 
+  it('shows the average ticket among the session cards', async () => {
+    renderPage();
+    await waitFor(() =>
+      expect(
+        sessionRegion().getByText('Ticket Médio').parentElement,
+      ).toHaveTextContent('R$ 50,00'),
+    );
+  });
+
+  it('separates the current situation from the session report', async () => {
+    renderPage();
+    expect(
+      await screen.findByRole('tablist', { name: 'Situação atual' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('tablist', { name: 'Relatório da sessão' }),
+    ).toBeInTheDocument();
+  });
+
+  it('keeps the current situation available with no session at all', async () => {
+    listReportSessions.mockResolvedValue(right([]));
+    loadPendingAll.mockResolvedValue(right([makeOrder('77', 'open', 'Zeca')]));
+    renderPage();
+    expect(
+      await screen.findByRole('tablist', { name: 'Situação atual' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Nenhuma sessão encontrada')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('combobox', { name: 'Dia' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('lists the pending orders of every session, not only the selected one', async () => {
+    loadPendingAll.mockResolvedValue(
+      right([
+        makeOrder('50', 'open', 'Vera'),
+        makeOrder('51', 'pending', 'Caio'),
+      ]),
+    );
+    renderPage();
+    await openTab('Comandas pendentes');
+    expect(await screen.findByText('50 — Vera')).toBeInTheDocument();
+    expect(screen.getByText('51 — Caio')).toBeInTheDocument();
+    expect(screen.queryByText('10 — Ana')).not.toBeInTheDocument();
+  });
+
+  it('says there is nothing pending when every tab is settled', async () => {
+    loadPendingAll.mockResolvedValue(right([]));
+    renderPage();
+    await openTab('Comandas pendentes');
+    expect(
+      await screen.findByText('Nenhuma comanda pendente'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Imprimir' })).toBeDisabled();
+  });
+
+  it('prints the pending orders of every session', async () => {
+    const all = [makeOrder('50', 'open', 'Vera')];
+    loadPendingAll.mockResolvedValue(right(all));
+    renderPage();
+    await openTab('Comandas pendentes');
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Imprimir' }),
+    );
+    expect(printPendingTabs).toHaveBeenCalledWith(all);
+  });
+
   it('renders payment methods with percentages and labels', async () => {
     renderPage();
     await waitFor(() => expect(screen.getByText('PIX')).toBeInTheDocument());
@@ -249,22 +331,16 @@ describe('ReportsPage', () => {
     expect(screen.getByText('5x')).toBeInTheDocument();
   });
 
-  it('renders pending orders with open and pending badges', async () => {
-    renderPage();
-    await waitFor(() => expect(screen.getByText('#10')).toBeInTheDocument());
-    expect(screen.getByText('Aberto')).toBeInTheDocument();
-    expect(screen.getByText('Pendente')).toBeInTheDocument();
-  });
-
   it('shows the day closing receipt on its tab', async () => {
     renderPage();
     await waitFor(() =>
       expect(loadSessionReport).toHaveBeenCalledWith('session-2'),
     );
     await openTab('Fechamento do dia');
-    expect(await screen.findByText('Grupo Escoteiro')).toBeInTheDocument();
-    expect(screen.getByText('Total de vendas')).toBeInTheDocument();
-    expect(screen.getByText('Margem')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(sessionRegion().getByText('Total de vendas')).toBeInTheDocument(),
+    );
+    expect(sessionRegion().getByText('Margem')).toBeInTheDocument();
   });
 
   it('prints the day closing receipt from its tab', async () => {
@@ -274,7 +350,7 @@ describe('ReportsPage', () => {
     );
     await openTab('Fechamento do dia');
     await userEvent.click(
-      await screen.findByRole('button', { name: 'Imprimir' }),
+      sessionRegion().getByRole('button', { name: 'Imprimir' }),
     );
     expect(printDayReport).toHaveBeenCalledWith(FULL_REPORT);
   });
@@ -309,29 +385,6 @@ describe('ReportsPage', () => {
       expect(screen.getByRole('status')).toHaveTextContent('falha estoque'),
     );
     expect(printStock).not.toHaveBeenCalled();
-  });
-
-  it('shows the pending tabs receipt on its tab', async () => {
-    renderPage();
-    await waitFor(() =>
-      expect(loadSessionReport).toHaveBeenCalledWith('session-2'),
-    );
-    await openTab('Comandas pendentes');
-    expect(await screen.findByText('10 — Ana')).toBeInTheDocument();
-    expect(screen.getByText('11 — Bia')).toBeInTheDocument();
-    expect(screen.getByText('R$ 60,00')).toBeInTheDocument();
-  });
-
-  it('prints the pending tabs receipt from its tab', async () => {
-    renderPage();
-    await waitFor(() =>
-      expect(loadSessionReport).toHaveBeenCalledWith('session-2'),
-    );
-    await openTab('Comandas pendentes');
-    await userEvent.click(
-      await screen.findByRole('button', { name: 'Imprimir' }),
-    );
-    expect(printPendingTabs).toHaveBeenCalledWith(FULL_REPORT.pending);
   });
 
   it('abre o painel de exportação com a sessão e o dia escolhidos', async () => {

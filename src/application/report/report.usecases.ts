@@ -51,6 +51,14 @@ export function makeLoadSessionReport(orders: OrderRepository) {
   };
 }
 
+export function makeLoadPendingAll(orders: OrderRepository) {
+  return async (): Promise<Either<AppError, Order[]>> => {
+    const result = await orders.listAll();
+    if (isLeft(result)) return result;
+    return right(pendingOrders(result.right));
+  };
+}
+
 export function makeLoadDashboard(orders: OrderRepository) {
   return async (
     sessionUid: string,

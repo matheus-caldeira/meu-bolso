@@ -10,11 +10,13 @@ import type { Session } from '../../domain/cash/cash.entity';
 
 const listReportSessions = vi.fn();
 const loadSessionReport = vi.fn();
+const loadPendingAll = vi.fn();
 
 vi.mock('../../app/container', () => ({
   container: {
     listReportSessions: () => listReportSessions(),
     loadSessionReport: (uid: string) => loadSessionReport(uid),
+    loadPendingAll: () => loadPendingAll(),
   },
 }));
 
@@ -65,6 +67,7 @@ function makeReport(total: number): SessionReport {
       profit: total,
       margin: 0,
       paidCount: 0,
+      averageTicket: 0,
     },
     byMethod: {},
     products: [],
@@ -82,6 +85,7 @@ function Probe() {
     selectedDay,
     selectDay,
     sessionsOfDay,
+    pendingAll,
   } = useReports();
   return (
     <div>
@@ -91,6 +95,7 @@ function Probe() {
       <span>days:{days.join('|')}</span>
       <span>day:{selectedDay ?? 'none'}</span>
       <span>ofDay:{sessionsOfDay.map((s) => s.uid).join('|')}</span>
+      <span>pendingAll:{pendingAll.length}</span>
       <button onClick={() => select('session-1')}>select-1</button>
       <button onClick={() => selectDay('01/01/1970')}>select-day</button>
       <button onClick={() => selectDay('31/12/1969')}>select-empty-day</button>
@@ -110,8 +115,10 @@ describe('useReports', () => {
   beforeEach(() => {
     listReportSessions.mockReset();
     loadSessionReport.mockReset();
+    loadPendingAll.mockReset();
     listReportSessions.mockResolvedValue(right(SESSIONS));
     loadSessionReport.mockResolvedValue(right(makeReport(50)));
+    loadPendingAll.mockResolvedValue(right([]));
   });
   afterEach(cleanup);
 
@@ -184,6 +191,40 @@ describe('useReports', () => {
       expect(screen.getByText('day:01/01/1970')).toBeInTheDocument(),
     );
     expect(screen.getByText('ofDay:session-1')).toBeInTheDocument();
+  });
+
+  it('loads the pending orders of every session once', async () => {
+    loadPendingAll.mockResolvedValue(
+      right([{ uid: 'o1' }, { uid: 'o2' }, { uid: 'o3' }]),
+    );
+    renderProbe();
+    await waitFor(() =>
+      expect(screen.getByText('pendingAll:3')).toBeInTheDocument(),
+    );
+    expect(loadPendingAll).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the pending list independent from the selected day', async () => {
+    loadPendingAll.mockResolvedValue(right([{ uid: 'o1' }]));
+    renderProbe();
+    await waitFor(() =>
+      expect(screen.getByText('pendingAll:1')).toBeInTheDocument(),
+    );
+    await userEvent.click(screen.getByText('select-day'));
+    await waitFor(() =>
+      expect(screen.getByText('day:01/01/1970')).toBeInTheDocument(),
+    );
+    expect(screen.getByText('pendingAll:1')).toBeInTheDocument();
+    expect(loadPendingAll).toHaveBeenCalledTimes(1);
+  });
+
+  it('toasts when loading the pending orders fails', async () => {
+    loadPendingAll.mockResolvedValue(left(new FakeError('falha pendentes')));
+    renderProbe();
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent('falha pendentes'),
+    );
+    expect(screen.getByText('pendingAll:0')).toBeInTheDocument();
   });
 
   it('handles an empty session list with no selection', async () => {

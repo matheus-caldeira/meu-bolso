@@ -26,6 +26,7 @@ const DATA: DashboardData = {
     profit: 60,
     margin: 60,
     paidCount: 3,
+    averageTicket: 100 / 3,
   },
   openCount: 2,
   topProducts: [{ name: 'X', qty: 1, total: 10, cost: 4 }],

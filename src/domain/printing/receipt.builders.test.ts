@@ -161,6 +161,7 @@ describe('buildDayReportReceipt', () => {
         profit: 60,
         margin: 60,
         paidCount: 4,
+        averageTicket: 25,
       },
       byMethod: { dinheiro: 70, pix: 30 },
       products: [
@@ -238,6 +239,7 @@ describe('buildDayReportReceipt', () => {
         profit: 0,
         margin: 0,
         paidCount: 0,
+        averageTicket: 0,
       },
       byMethod: {},
       products: [],
