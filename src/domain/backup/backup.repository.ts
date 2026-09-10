@@ -15,7 +15,11 @@ export type BackupEntity =
   | 'financeInstallmentPlans'
   | 'financeClosings'
   | 'financePaymentMethods'
-  | 'financeCardInvoices';
+  | 'financeCardInvoices'
+  | 'customers'
+  | 'customizationGroups'
+  | 'customizationItems'
+  | 'config';
 
 export type BackupFormat = 'json' | 'csv';
 

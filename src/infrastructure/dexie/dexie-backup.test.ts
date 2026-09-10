@@ -364,6 +364,111 @@ describe('DexieBackupRepository', () => {
     expect((await db.customizationItems.toArray())[0].id).toBe(3);
   });
 
+  it('exporta e reimporta clientes em CSV', async () => {
+    await db.customers.add({
+      uid: 'cus-1',
+      name: 'Maju',
+      phone: '',
+      createdAt: 1,
+      updatedAt: 1,
+    } as never);
+    const saver = new FakeFileSaver();
+    const repo = new DexieBackupRepository(db, saver);
+
+    await repo.exportEntity('customers', 'csv');
+    await repo.wipeAll();
+    const file = new File([saver.files[0].content], 'pdv-customers.csv');
+    const result = await repo.importEntity('customers', file);
+
+    expect(isRight(result) && result.right).toBe(1);
+    const stored = await db.customers.toArray();
+    expect(stored[0].name).toBe('Maju');
+  });
+
+  it('exporta e reimporta grupos de adicionais em CSV', async () => {
+    await db.customizationGroups.add({
+      uid: 'group-1',
+      name: 'Adicionais',
+      required: false,
+      minQty: 0,
+      maxQty: 1,
+      chargeAfter: 0,
+    } as never);
+    const saver = new FakeFileSaver();
+    const repo = new DexieBackupRepository(db, saver);
+
+    await repo.exportEntity('customizationGroups', 'csv');
+    await repo.wipeAll();
+    const file = new File(
+      [saver.files[0].content],
+      'pdv-customizationGroups.csv',
+    );
+    const result = await repo.importEntity('customizationGroups', file);
+
+    expect(isRight(result) && result.right).toBe(1);
+    const stored = await db.customizationGroups.toArray();
+    expect(stored[0].name).toBe('Adicionais');
+  });
+
+  it('exporta e reimporta itens de adicionais em CSV', async () => {
+    await db.customizationItems.add({
+      uid: 'item-1',
+      groupUid: 'group-1',
+      name: 'Bacon',
+      price: 3,
+      maxQty: 2,
+      chargeAfter: 0,
+      active: true,
+    } as never);
+    const saver = new FakeFileSaver();
+    const repo = new DexieBackupRepository(db, saver);
+
+    await repo.exportEntity('customizationItems', 'csv');
+    await repo.wipeAll();
+    const file = new File(
+      [saver.files[0].content],
+      'pdv-customizationItems.csv',
+    );
+    const result = await repo.importEntity('customizationItems', file);
+
+    expect(isRight(result) && result.right).toBe(1);
+    const stored = await db.customizationItems.toArray();
+    expect(stored[0].name).toBe('Bacon');
+  });
+
+  it('exporta e reimporta a configuração em CSV', async () => {
+    await db.config.add({
+      name: 'Minha Loja',
+      document: '',
+      phone: '',
+      address: '',
+      ticketCounter: 1,
+      ticketLimit: 100,
+      ticketAutoReset: true,
+      statusControlEnabled: true,
+      businessTypeId: '',
+      enabledModules: [],
+      extra: {},
+      printerDriver: 'browser',
+      printerPaperWidth: 80,
+      printerCodepage: 'cp850',
+      printerAutoPrintOnClose: false,
+      printerBatchIncludesPrevious: true,
+      layoutMode: 'auto',
+    } as never);
+    const saver = new FakeFileSaver();
+    const repo = new DexieBackupRepository(db, saver);
+
+    await repo.exportEntity('config', 'csv');
+    await repo.wipeAll();
+    const file = new File([saver.files[0].content], 'pdv-config.csv');
+    const result = await repo.importEntity('config', file);
+
+    expect(isRight(result) && result.right).toBe(1);
+    const stored = await db.config.toArray();
+    expect(stored[0].name).toBe('Minha Loja');
+  });
+
   it('returns Left when the database fails', async () => {
     const repo = new DexieBackupRepository(db, new FakeFileSaver());
     db.close();

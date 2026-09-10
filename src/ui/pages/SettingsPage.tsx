@@ -81,6 +81,12 @@ const ENTITIES: { key: BackupEntity; label: string }[] = [
   { key: 'financeRecurrences', label: 'Recorrências' },
   { key: 'financeInstallmentPlans', label: 'Parcelamentos' },
   { key: 'financeClosings', label: 'Fechamentos' },
+  { key: 'financePaymentMethods', label: 'Meios de pagamento' },
+  { key: 'financeCardInvoices', label: 'Faturas de cartão' },
+  { key: 'customers', label: 'Clientes' },
+  { key: 'customizationGroups', label: 'Grupos de adicionais' },
+  { key: 'customizationItems', label: 'Itens de adicionais' },
+  { key: 'config', label: 'Configuração' },
 ];
 
 function toFormState(config: BusinessConfig): FormState {
