@@ -1,6 +1,5 @@
-import { isLeft, left, right, type Either } from '../../domain/shared/either';
+import { isLeft, right, type Either } from '../../domain/shared/either';
 import type { AppError } from '../../domain/shared/errors';
-import { InvalidTicketCounterError } from '../../domain/errors';
 import type {
   BusinessConfig,
   LayoutMode,
@@ -14,7 +13,6 @@ import type {
 import {
   buildBusinessInfo,
   formatTicket,
-  isTicketCounterWithinLimit,
   normalizeLayoutMode,
   normalizeTicketCounter,
   normalizeTicketLimit,
@@ -25,7 +23,6 @@ export interface ConfigInput {
   document: string;
   phone: string;
   address: string;
-  ticketCounter: number;
   ticketLimit: number;
   ticketAutoReset: boolean;
   statusControlEnabled: boolean;
@@ -57,18 +54,11 @@ export function makePeekTicketSuggestion(repository: ConfigRepository) {
 }
 
 export function makeSaveConfig(repository: ConfigRepository) {
-  return async (
-    input: ConfigInput,
-  ): Promise<Either<AppError, BusinessConfig>> => {
+  return (input: ConfigInput): Promise<Either<AppError, BusinessConfig>> => {
     const info = buildBusinessInfo(input);
-    const limit = normalizeTicketLimit(input.ticketLimit);
-    if (!isTicketCounterWithinLimit(input.ticketCounter, limit)) {
-      return left(new InvalidTicketCounterError(limit));
-    }
     return repository.save({
       ...info,
-      ticketCounter: input.ticketCounter,
-      ticketLimit: limit,
+      ticketLimit: normalizeTicketLimit(input.ticketLimit),
       ticketAutoReset: input.ticketAutoReset,
       statusControlEnabled: input.statusControlEnabled,
       businessTypeId: input.businessTypeId,

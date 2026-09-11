@@ -24,17 +24,6 @@ export function normalizeTicketCounter(counter: number): number {
   return Math.max(1, Math.floor(Number.isFinite(counter) ? counter : 1));
 }
 
-export function isTicketCounterWithinLimit(
-  counter: number,
-  limit: number,
-): boolean {
-  return (
-    Number.isInteger(counter) &&
-    counter >= 1 &&
-    counter <= normalizeTicketLimit(limit)
-  );
-}
-
 export function formatTicket(counter: number, limit: number): string {
   const digits = Math.max(1, String(Math.max(1, limit)).length);
   return String(counter).padStart(digits, '0');

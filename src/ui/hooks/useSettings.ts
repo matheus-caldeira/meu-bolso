@@ -56,7 +56,7 @@ export function useSettings() {
           return false;
         },
         () => {
-          toast(`Sequência reiniciada a partir de ${counter}`);
+          toast(`Sequência ajustada para ${counter}`);
           load();
           return true;
         },

@@ -43,14 +43,6 @@ export class TicketLimitReachedError extends DomainError {
   }
 }
 
-export class InvalidTicketCounterError extends DomainError {
-  readonly code = 'INVALID_TICKET_COUNTER';
-
-  constructor(limit: number) {
-    super(`Informe um número inteiro entre 1 e ${limit}.`);
-  }
-}
-
 export class InvalidProductError extends DomainError {
   readonly code = 'INVALID_PRODUCT';
 }

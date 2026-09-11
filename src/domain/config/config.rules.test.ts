@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
   buildBusinessInfo,
   formatTicket,
-  isTicketCounterWithinLimit,
   nextTicketCounter,
   normalizeLayoutMode,
   normalizeTicketCounter,
@@ -85,27 +84,6 @@ describe('normalizeLayoutMode', () => {
     expect(normalizeLayoutMode('tablet')).toBe('auto');
     expect(normalizeLayoutMode('')).toBe('auto');
     expect(normalizeLayoutMode(undefined)).toBe('auto');
-  });
-});
-
-describe('isTicketCounterWithinLimit', () => {
-  it('aceita inteiros de um até o limite', () => {
-    expect(isTicketCounterWithinLimit(1, 99)).toBe(true);
-    expect(isTicketCounterWithinLimit(42, 99)).toBe(true);
-    expect(isTicketCounterWithinLimit(99, 99)).toBe(true);
-  });
-
-  it('recusa valores fora da faixa ou não inteiros', () => {
-    expect(isTicketCounterWithinLimit(0, 99)).toBe(false);
-    expect(isTicketCounterWithinLimit(-1, 99)).toBe(false);
-    expect(isTicketCounterWithinLimit(100, 99)).toBe(false);
-    expect(isTicketCounterWithinLimit(7.5, 99)).toBe(false);
-    expect(isTicketCounterWithinLimit(Number.NaN, 99)).toBe(false);
-  });
-
-  it('normaliza o limite antes de comparar', () => {
-    expect(isTicketCounterWithinLimit(1, 0)).toBe(true);
-    expect(isTicketCounterWithinLimit(2, 0)).toBe(false);
   });
 });
 

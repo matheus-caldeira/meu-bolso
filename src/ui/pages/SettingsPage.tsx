@@ -57,7 +57,7 @@ interface FormState {
   document: string;
   phone: string;
   address: string;
-  ticketCounter: string;
+  ticketCounter: number;
   ticketLimit: string;
   ticketAutoReset: boolean;
   statusControlEnabled: boolean;
@@ -84,7 +84,7 @@ function toFormState(config: BusinessConfig): FormState {
     document: config.document,
     phone: config.phone,
     address: config.address,
-    ticketCounter: String(config.ticketCounter),
+    ticketCounter: config.ticketCounter,
     ticketLimit: String(config.ticketLimit),
     ticketAutoReset: config.ticketAutoReset,
     statusControlEnabled: config.statusControlEnabled,
@@ -190,7 +190,6 @@ export function SettingsPage() {
       document: state.document,
       phone: state.phone,
       address: state.address,
-      ticketCounter: Number(state.ticketCounter),
       ticketLimit: Number(state.ticketLimit),
       ticketAutoReset: state.ticketAutoReset,
       statusControlEnabled: state.statusControlEnabled,
@@ -433,25 +432,10 @@ export function SettingsPage() {
             }
           />
         </FormField>
-        <FormField
-          label="Próxima comanda"
-          hint="Número que será impresso na próxima venda. Útil depois de restaurar um backup, para retomar a contagem de onde ela parou."
-        >
-          <TextField
-            type="number"
-            min={1}
-            max={Number(form.ticketLimit)}
-            className="font-mono tabular-nums"
-            value={form.ticketCounter}
-            onChange={(e) =>
-              setForm((p) => p && { ...p, ticketCounter: e.target.value })
-            }
-          />
-        </FormField>
         <p className="text-sm text-ink-tertiary">
-          Sairá no papel como:{' '}
+          Próxima comanda:{' '}
           <strong className="font-mono tabular-nums text-ink-primary">
-            {formatTicket(Number(form.ticketCounter), Number(form.ticketLimit))}
+            {formatTicket(form.ticketCounter, Number(form.ticketLimit))}
           </strong>
         </p>
         <Button className="self-start" onClick={handleSave}>
@@ -460,9 +444,9 @@ export function SettingsPage() {
 
         <div className="flex flex-col gap-3 border-t border-border pt-4">
           <span className="text-xs font-bold uppercase tracking-wide text-ink-tertiary">
-            Reiniciar Sequência
+            Ajustar Sequência
           </span>
-          <FormField label="Reiniciar a partir de">
+          <FormField label="Ajustar sequência para">
             <TextField
               type="number"
               min={1}
@@ -475,7 +459,7 @@ export function SettingsPage() {
             className="self-start"
             onClick={() => setResetModalOpen(true)}
           >
-            Reiniciar Sequência
+            Ajustar Sequência
           </Button>
         </div>
       </Section>
@@ -794,7 +778,7 @@ export function SettingsPage() {
       <Modal
         open={resetModalOpen}
         onClose={() => setResetModalOpen(false)}
-        title="Reiniciar sequência de comandas"
+        title="Ajustar sequência de comandas"
       >
         <p className="text-sm text-ink-secondary">
           A próxima comanda passará a ser{' '}
@@ -807,7 +791,7 @@ export function SettingsPage() {
           <Button variant="ghost" onClick={() => setResetModalOpen(false)}>
             Cancelar
           </Button>
-          <Button onClick={handleReset}>Reiniciar</Button>
+          <Button onClick={handleReset}>Ajustar</Button>
         </div>
       </Modal>
 

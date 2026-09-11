@@ -59,7 +59,6 @@ const INPUT = {
   document: '123',
   phone: '999',
   address: 'Rua A',
-  ticketCounter: 5,
   ticketLimit: 99,
   ticketAutoReset: true,
   statusControlEnabled: false,
@@ -161,7 +160,7 @@ describe('useSettings', () => {
     await userEvent.click(screen.getByText('reset'));
     await waitFor(() =>
       expect(screen.getByRole('status')).toHaveTextContent(
-        'Sequência reiniciada a partir de 7',
+        'Sequência ajustada para 7',
       ),
     );
     expect(resetTicketSequence).toHaveBeenCalledWith(7);

@@ -12,10 +12,7 @@ import { SettingsPage } from './SettingsPage';
 import { ToastProvider } from '../molecules/Toast';
 import { left, right } from '../../domain/shared/either';
 import { AppError } from '../../domain/shared/errors';
-import {
-  InvalidTicketCounterError,
-  LastModuleDisabledError,
-} from '../../domain/errors';
+import { LastModuleDisabledError } from '../../domain/errors';
 import type { BusinessConfig } from '../../domain/config/config.entity';
 
 const readConfig = vi.fn();
@@ -197,7 +194,6 @@ describe('SettingsPage', () => {
       document: '999',
       phone: '555',
       address: 'Rua Nova',
-      ticketCounter: 5,
       ticketLimit: 99,
       ticketAutoReset: true,
       statusControlEnabled: false,
@@ -291,7 +287,6 @@ describe('SettingsPage', () => {
         document: '123',
         phone: '999',
         address: 'Rua A',
-        ticketCounter: 5,
         ticketLimit: 999,
         ticketAutoReset: false,
         statusControlEnabled: false,
@@ -300,46 +295,6 @@ describe('SettingsPage', () => {
         layoutMode: 'auto',
       }),
     );
-  });
-
-  it('edita a próxima comanda e salva o novo valor', async () => {
-    saveConfig.mockResolvedValue(right(CONFIG));
-    renderPage();
-    await waitFor(() =>
-      expect(screen.getByLabelText('Próxima comanda')).toBeInTheDocument(),
-    );
-    const counter = screen.getByLabelText('Próxima comanda');
-    expect(counter).toHaveValue(5);
-    await userEvent.clear(counter);
-    await userEvent.type(counter, '42');
-    expect(screen.getByText('42')).toBeInTheDocument();
-    await userEvent.click(screen.getAllByRole('button', { name: 'Salvar' })[1]);
-    await waitFor(() =>
-      expect(saveConfig).toHaveBeenCalledWith(
-        expect.objectContaining({ ticketCounter: 42 }),
-      ),
-    );
-  });
-
-  it('mostra o erro e não salva quando a próxima comanda é inválida', async () => {
-    saveConfig.mockResolvedValue(
-      left(new InvalidTicketCounterError(99) as AppError),
-    );
-    renderPage();
-    await waitFor(() =>
-      expect(screen.getByLabelText('Próxima comanda')).toBeInTheDocument(),
-    );
-    await userEvent.clear(screen.getByLabelText('Próxima comanda'));
-    await userEvent.click(screen.getAllByRole('button', { name: 'Salvar' })[1]);
-    await waitFor(() =>
-      expect(screen.getByRole('status')).toHaveTextContent(
-        'Informe um número inteiro entre 1 e 99.',
-      ),
-    );
-    expect(saveConfig).toHaveBeenCalledWith(
-      expect.objectContaining({ ticketCounter: 0 }),
-    );
-    expect(readConfig).toHaveBeenCalledTimes(1);
   });
 
   it('toggles status control and saves', async () => {
@@ -385,19 +340,19 @@ describe('SettingsPage', () => {
     renderPage();
     await waitFor(() =>
       expect(
-        screen.getByLabelText('Reiniciar a partir de'),
+        screen.getByLabelText('Ajustar sequência para'),
       ).toBeInTheDocument(),
     );
-    const resetInput = screen.getByLabelText('Reiniciar a partir de');
+    const resetInput = screen.getByLabelText('Ajustar sequência para');
     await userEvent.clear(resetInput);
     await userEvent.type(resetInput, '12');
     await userEvent.click(
-      screen.getByRole('button', { name: 'Reiniciar Sequência' }),
+      screen.getByRole('button', { name: 'Ajustar Sequência' }),
     );
     const dialog = screen.getByRole('dialog');
     expect(within(dialog).getByText('12')).toBeInTheDocument();
     await userEvent.click(
-      within(dialog).getByRole('button', { name: 'Reiniciar' }),
+      within(dialog).getByRole('button', { name: 'Ajustar' }),
     );
     expect(resetTicketSequence).toHaveBeenCalledWith(12);
     await waitFor(() =>
@@ -410,15 +365,15 @@ describe('SettingsPage', () => {
     renderPage();
     await waitFor(() =>
       expect(
-        screen.getByLabelText('Reiniciar a partir de'),
+        screen.getByLabelText('Ajustar sequência para'),
       ).toBeInTheDocument(),
     );
     await userEvent.click(
-      screen.getByRole('button', { name: 'Reiniciar Sequência' }),
+      screen.getByRole('button', { name: 'Ajustar Sequência' }),
     );
     await userEvent.click(
       within(screen.getByRole('dialog')).getByRole('button', {
-        name: 'Reiniciar',
+        name: 'Ajustar',
       }),
     );
     await waitFor(() =>
@@ -431,11 +386,11 @@ describe('SettingsPage', () => {
     renderPage();
     await waitFor(() =>
       expect(
-        screen.getByLabelText('Reiniciar a partir de'),
+        screen.getByLabelText('Ajustar sequência para'),
       ).toBeInTheDocument(),
     );
     await userEvent.click(
-      screen.getByRole('button', { name: 'Reiniciar Sequência' }),
+      screen.getByRole('button', { name: 'Ajustar Sequência' }),
     );
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('presentation'));
@@ -449,11 +404,11 @@ describe('SettingsPage', () => {
     renderPage();
     await waitFor(() =>
       expect(
-        screen.getByLabelText('Reiniciar a partir de'),
+        screen.getByLabelText('Ajustar sequência para'),
       ).toBeInTheDocument(),
     );
     await userEvent.click(
-      screen.getByRole('button', { name: 'Reiniciar Sequência' }),
+      screen.getByRole('button', { name: 'Ajustar Sequência' }),
     );
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     await userEvent.click(
