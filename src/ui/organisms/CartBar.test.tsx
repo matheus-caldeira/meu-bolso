@@ -231,16 +231,88 @@ describe('CartBar', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('filtra a lista digitando no campo do modal de busca', async () => {
+  it('filtra a lista digitando no campo do modal de busca sem alterar o cliente da venda', async () => {
     const props = baseProps();
-    render(<CartBar {...props} />);
+    const maju: Customer = {
+      uid: 'customer-1',
+      name: 'Maju',
+      addresses: [],
+      extra: {},
+      createdAt: 1,
+      updatedAt: 1,
+    };
+    const felipe: Customer = {
+      uid: 'customer-2',
+      name: 'Felipe',
+      addresses: [],
+      extra: {},
+      createdAt: 1,
+      updatedAt: 1,
+    };
+    render(<CartBar {...props} customerSuggestions={[maju, felipe]} />);
 
     await userEvent.click(
       screen.getByRole('button', { name: 'Buscar cliente na lista' }),
     );
-    await userEvent.type(screen.getByLabelText('Nome do cliente'), 'M');
+    await userEvent.type(screen.getByLabelText('Nome do cliente'), 'Ma');
 
-    expect(props.onCustomerNameChange).toHaveBeenCalledWith('M');
+    expect(props.onCustomerNameChange).not.toHaveBeenCalled();
+    const dialog = screen.getByRole('dialog', { name: 'Buscar cliente' });
+    expect(within(dialog).getByText('Maju')).toBeInTheDocument();
+    expect(within(dialog).queryByText('Felipe')).not.toBeInTheDocument();
+  });
+
+  it('fecha o modal de busca sem selecionar e mantém o cliente da venda inalterado', async () => {
+    const props = baseProps();
+    const maju: Customer = {
+      uid: 'customer-1',
+      name: 'Maju',
+      addresses: [],
+      extra: {},
+      createdAt: 1,
+      updatedAt: 1,
+    };
+    render(<CartBar {...props} customerName="" customerSuggestions={[maju]} />);
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Buscar cliente na lista' }),
+    );
+    await userEvent.type(screen.getByLabelText('Nome do cliente'), 'Tes');
+    await userEvent.keyboard('{Escape}');
+
+    expect(
+      screen.queryByRole('dialog', { name: 'Buscar cliente' }),
+    ).not.toBeInTheDocument();
+    expect(props.onCustomerNameChange).not.toHaveBeenCalled();
+    expect(props.onSelectCustomer).not.toHaveBeenCalled();
+    expect(screen.getByRole('combobox', { name: 'Cliente' })).toHaveValue('');
+  });
+
+  it('abre o modal de busca sempre com o campo de filtro limpo', async () => {
+    const props = baseProps();
+    const maju: Customer = {
+      uid: 'customer-1',
+      name: 'Maju',
+      addresses: [],
+      extra: {},
+      createdAt: 1,
+      updatedAt: 1,
+    };
+    render(<CartBar {...props} customerSuggestions={[maju]} />);
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Buscar cliente na lista' }),
+    );
+    await userEvent.type(screen.getByLabelText('Nome do cliente'), 'Tes');
+    await userEvent.keyboard('{Escape}');
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Buscar cliente na lista' }),
+    );
+
+    expect(screen.getByLabelText('Nome do cliente')).toHaveValue('');
+    const dialog = screen.getByRole('dialog', { name: 'Buscar cliente' });
+    expect(within(dialog).getByText('Maju')).toBeInTheDocument();
   });
 
   it('oferece a comanda quando o tipo de pedido não é informado', async () => {
@@ -272,11 +344,20 @@ describe('CartBar', () => {
   });
 
   it('avisa quando a busca não encontra ninguém', async () => {
-    render(<CartBar {...baseProps()} customerName="Zzz" />);
+    const customer: Customer = {
+      uid: 'customer-1',
+      name: 'Maju',
+      addresses: [],
+      extra: {},
+      createdAt: 1,
+      updatedAt: 1,
+    };
+    render(<CartBar {...baseProps()} customerSuggestions={[customer]} />);
 
     await userEvent.click(
       screen.getByRole('button', { name: 'Buscar cliente na lista' }),
     );
+    await userEvent.type(screen.getByLabelText('Nome do cliente'), 'Zzz');
 
     expect(screen.getByText('Nenhum cliente encontrado.')).toBeInTheDocument();
     expect(

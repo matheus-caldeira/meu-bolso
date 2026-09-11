@@ -50,6 +50,7 @@ export function CartBar({
 }: CartBarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   const searchFieldId = useId();
   const itemCount = cart.reduce((sum, item) => sum + item.qty, 0);
   const hasItems = itemCount > 0;
@@ -58,6 +59,9 @@ export function CartBar({
     label: customerSuggestionLabel(customer),
     hint: customer.phone,
   }));
+  const searchedOptions = suggestionOptions.filter((option) =>
+    option.label.toLowerCase().includes(searchTerm.toLowerCase()),
+  );
 
   function runAndClose(action: () => void) {
     setMenuOpen(false);
@@ -68,6 +72,11 @@ export function CartBar({
     customerSuggestions
       .filter((entry) => entry.uid === uid)
       .forEach((customer) => onSelectCustomer(customer));
+  }
+
+  function openSearch() {
+    setSearchTerm('');
+    setSearchOpen(true);
   }
 
   return (
@@ -112,7 +121,7 @@ export function CartBar({
             options={suggestionOptions}
             onChange={onCustomerNameChange}
             onSelect={(option) => pickSuggestion(option.value)}
-            onSearch={() => setSearchOpen(true)}
+            onSearch={openSearch}
           />
         </div>
         <Button
@@ -143,10 +152,10 @@ export function CartBar({
             autoComplete="off"
             placeholder="Digite para filtrar"
             className="min-h-11 w-full rounded-sm border border-border-emphasis bg-surface-inset px-3 py-2 text-sm text-ink-primary outline-none focus:border-accent"
-            value={customerName}
-            onChange={(event) => onCustomerNameChange(event.target.value)}
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
           />
-          {suggestionOptions.length === 0 ? (
+          {searchedOptions.length === 0 ? (
             <p className="py-6 text-center text-sm text-ink-tertiary">
               Nenhum cliente encontrado.
             </p>
@@ -155,7 +164,7 @@ export function CartBar({
               aria-label="Clientes encontrados"
               className="flex max-h-[50dvh] flex-col overflow-y-auto"
             >
-              {suggestionOptions.map((option) => (
+              {searchedOptions.map((option) => (
                 <li key={option.value}>
                   <button
                     type="button"
