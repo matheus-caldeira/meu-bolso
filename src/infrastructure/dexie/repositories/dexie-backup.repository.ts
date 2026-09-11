@@ -271,12 +271,13 @@ export class DexieBackupRepository implements BackupRepository {
         }
         imported[entity] = cleaned.length;
       }
-      await this.reconcileTickets(rowsByEntity.get('orders') ?? []);
+      await this.reconcileTickets();
     });
     return imported;
   }
 
-  private async reconcileTickets(orderRows: Row[]): Promise<void> {
+  private async reconcileTickets(): Promise<void> {
+    const orderRows = (await this.db.table('orders').toArray()) as Row[];
     if (orderRows.length === 0) return;
     const table = this.db.table('config');
     const stored = ((await table.toArray()) as Row[])[0];
