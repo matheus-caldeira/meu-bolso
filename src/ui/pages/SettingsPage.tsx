@@ -57,7 +57,7 @@ interface FormState {
   document: string;
   phone: string;
   address: string;
-  ticketCounter: number;
+  ticketCounter: string;
   ticketLimit: string;
   ticketAutoReset: boolean;
   statusControlEnabled: boolean;
@@ -84,7 +84,7 @@ function toFormState(config: BusinessConfig): FormState {
     document: config.document,
     phone: config.phone,
     address: config.address,
-    ticketCounter: config.ticketCounter,
+    ticketCounter: String(config.ticketCounter),
     ticketLimit: String(config.ticketLimit),
     ticketAutoReset: config.ticketAutoReset,
     statusControlEnabled: config.statusControlEnabled,
@@ -190,6 +190,7 @@ export function SettingsPage() {
       document: state.document,
       phone: state.phone,
       address: state.address,
+      ticketCounter: Number(state.ticketCounter),
       ticketLimit: Number(state.ticketLimit),
       ticketAutoReset: state.ticketAutoReset,
       statusControlEnabled: state.statusControlEnabled,
@@ -432,10 +433,25 @@ export function SettingsPage() {
             }
           />
         </FormField>
+        <FormField
+          label="Próxima comanda"
+          hint="Número que será impresso na próxima venda. Útil depois de restaurar um backup, para retomar a contagem de onde ela parou."
+        >
+          <TextField
+            type="number"
+            min={1}
+            max={Number(form.ticketLimit)}
+            className="font-mono tabular-nums"
+            value={form.ticketCounter}
+            onChange={(e) =>
+              setForm((p) => p && { ...p, ticketCounter: e.target.value })
+            }
+          />
+        </FormField>
         <p className="text-sm text-ink-tertiary">
-          Próxima comanda:{' '}
+          Sairá no papel como:{' '}
           <strong className="font-mono tabular-nums text-ink-primary">
-            {formatTicket(form.ticketCounter, Number(form.ticketLimit))}
+            {formatTicket(Number(form.ticketCounter), Number(form.ticketLimit))}
           </strong>
         </p>
         <Button className="self-start" onClick={handleSave}>

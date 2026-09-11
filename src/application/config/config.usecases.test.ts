@@ -65,6 +65,7 @@ const input = (over: Partial<ConfigInput> = {}): ConfigInput => ({
   document: '  12  ',
   phone: '  99  ',
   address: '  Rua  ',
+  ticketCounter: 7,
   ticketLimit: 50.5,
   ticketAutoReset: false,
   statusControlEnabled: true,
@@ -91,6 +92,7 @@ describe('makeSaveConfig', () => {
       document: '12',
       phone: '99',
       address: 'Rua',
+      ticketCounter: 7,
       ticketLimit: 50,
       ticketAutoReset: false,
       statusControlEnabled: true,
@@ -98,6 +100,30 @@ describe('makeSaveConfig', () => {
       extra: { group: 'Alcatéia' },
       layoutMode: 'mobile',
     });
+  });
+
+  it('recusa um contador acima do limite sem gravar nada', async () => {
+    const repo = new FakeConfigRepository();
+    const result = await makeSaveConfig(repo)(input({ ticketCounter: 51 }));
+    expect(isLeft(result)).toBe(true);
+    expect(isLeft(result) && result.left.code).toBe('INVALID_TICKET_COUNTER');
+    expect(repo.saved).toBeNull();
+  });
+
+  it('recusa um contador zerado, fracionado ou inválido', async () => {
+    const repo = new FakeConfigRepository();
+    for (const ticketCounter of [0, -1, 7.5, Number.NaN]) {
+      const result = await makeSaveConfig(repo)(input({ ticketCounter }));
+      expect(isLeft(result) && result.left.code).toBe('INVALID_TICKET_COUNTER');
+    }
+    expect(repo.saved).toBeNull();
+  });
+
+  it('aceita o contador exatamente no limite', async () => {
+    const repo = new FakeConfigRepository();
+    const result = await makeSaveConfig(repo)(input({ ticketCounter: 50 }));
+    expect(isRight(result)).toBe(true);
+    expect(repo.saved?.ticketCounter).toBe(50);
   });
 
   it('cai em auto quando o layoutMode informado é inválido', async () => {

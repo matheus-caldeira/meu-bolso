@@ -73,6 +73,31 @@ const businessConfig = (name: string): BusinessConfig => ({
   layoutMode: 'auto',
 });
 
+const importedOrder = (uid: string, ticket: string): NewOrder => ({
+  uid,
+  businessTypeId: 'scout',
+  sessionUid: 'ses-1',
+  items: [
+    {
+      name: 'Suco',
+      salePrice: 5,
+      costPrice: 2,
+      qty: 1,
+      batchId: `${uid}#1000`,
+      addedAt: 1000,
+    },
+  ],
+  total: 5,
+  paymentMethod: null,
+  customerName: '',
+  customerPhone: '',
+  ticket,
+  stage: 'finalizado',
+  status: 'open',
+  createdAt: 1000,
+  updatedAt: 1000,
+});
+
 const familyMember = (uid: string, name = 'Ana'): NewFamilyMember => ({
   uid,
   name,
@@ -603,6 +628,89 @@ describe('DexieBackupRepository — tabelas finance', () => {
     expect(methods[0].uid).toBe('pay-1');
     expect(invoices[0].uid).toBe('inv-1');
     expect(invoices[0].paymentMethodUid).toBe('pay-1');
+  });
+
+  it('importAll preserva o contador do backup quando ele está à frente dos pedidos', async () => {
+    const backup = {
+      config: [{ ...businessConfig('Escoteiro'), ticketCounter: 42 }],
+      orders: [importedOrder('ord-1', '0001'), importedOrder('ord-41', '0041')],
+    };
+    const result = await repo.importAll(
+      [new File([JSON.stringify(backup)], 'pdv-backup.json')],
+      'merge',
+    );
+    expect(isRight(result)).toBe(true);
+    const stored = await db.config.toArray();
+    expect(stored[0].ticketCounter).toBe(42);
+  });
+
+  it('importAll avança o contador quando o backup ficaria atrás dos pedidos', async () => {
+    const backup = {
+      config: [{ ...businessConfig('Escoteiro'), ticketCounter: 5 }],
+      orders: [importedOrder('ord-1', '0001'), importedOrder('ord-41', '0041')],
+    };
+    const result = await repo.importAll(
+      [new File([JSON.stringify(backup)], 'pdv-backup.json')],
+      'merge',
+    );
+    expect(isRight(result)).toBe(true);
+    const stored = await db.config.toArray();
+    expect(stored[0].ticketCounter).toBe(42);
+    expect(stored[0].name).toBe('Escoteiro');
+  });
+
+  it('importAll protege o contador do aparelho quando o backup não traz config', async () => {
+    await db.config.put({ ...businessConfig('Do aparelho'), ticketCounter: 3 });
+    const backup = { orders: [importedOrder('ord-41', '0041')] };
+    const result = await repo.importAll(
+      [new File([JSON.stringify(backup)], 'pdv-backup.json')],
+      'merge',
+    );
+    expect(isRight(result)).toBe(true);
+    const stored = await db.config.toArray();
+    expect(stored[0].ticketCounter).toBe(42);
+    expect(stored[0].name).toBe('Do aparelho');
+  });
+
+  it('importAll cria a config com o contador ajustado quando o replace limpou tudo', async () => {
+    await db.config.put({ ...businessConfig('Antiga'), ticketCounter: 3 });
+    const backup = { orders: [importedOrder('ord-41', '0041')] };
+    const result = await repo.importAll(
+      [new File([JSON.stringify(backup)], 'pdv-backup.json')],
+      'replace',
+    );
+    expect(isRight(result)).toBe(true);
+    const stored = await db.config.toArray();
+    expect(stored).toHaveLength(1);
+    expect(stored[0].ticketCounter).toBe(42);
+  });
+
+  it('importAll ignora tickets não numéricos ao ajustar o contador', async () => {
+    const backup = {
+      config: [{ ...businessConfig('Escoteiro'), ticketCounter: 7 }],
+      orders: [importedOrder('ord-a', 'ABC'), importedOrder('ord-b', '')],
+    };
+    const result = await repo.importAll(
+      [new File([JSON.stringify(backup)], 'pdv-backup.json')],
+      'merge',
+    );
+    expect(isRight(result)).toBe(true);
+    const stored = await db.config.toArray();
+    expect(stored[0].ticketCounter).toBe(7);
+  });
+
+  it('importAll sem pedidos deixa o contador do backup intacto', async () => {
+    const backup = {
+      config: [{ ...businessConfig('Escoteiro'), ticketCounter: 42 }],
+      products: [product('pro-1')],
+    };
+    const result = await repo.importAll(
+      [new File([JSON.stringify(backup)], 'pdv-backup.json')],
+      'merge',
+    );
+    expect(isRight(result)).toBe(true);
+    const stored = await db.config.toArray();
+    expect(stored[0].ticketCounter).toBe(42);
   });
 
   it('wipeAll apaga todas as tabelas, incluindo as finance', async () => {

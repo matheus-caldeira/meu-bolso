@@ -24,9 +24,39 @@ export function normalizeTicketCounter(counter: number): number {
   return Math.max(1, Math.floor(Number.isFinite(counter) ? counter : 1));
 }
 
+export function isTicketCounterWithinLimit(
+  counter: number,
+  limit: number,
+): boolean {
+  return (
+    Number.isInteger(counter) &&
+    counter >= 1 &&
+    counter <= normalizeTicketLimit(limit)
+  );
+}
+
 export function formatTicket(counter: number, limit: number): string {
   const digits = Math.max(1, String(Math.max(1, limit)).length);
   return String(counter).padStart(digits, '0');
+}
+
+export function parseTicketNumber(ticket: unknown): number | null {
+  if (typeof ticket !== 'string') return null;
+  const trimmed = ticket.trim();
+  if (!/^\d+$/.test(trimmed)) return null;
+  const parsed = Number(trimmed);
+  return Number.isSafeInteger(parsed) ? parsed : null;
+}
+
+export function reconcileTicketCounter(
+  counter: number,
+  tickets: readonly unknown[],
+): number {
+  const highest = tickets.reduce<number>((max, ticket) => {
+    const parsed = parseTicketNumber(ticket);
+    return parsed !== null && parsed > max ? parsed : max;
+  }, 0);
+  return Math.max(normalizeTicketCounter(counter), highest + 1);
 }
 
 export function nextTicketCounter(

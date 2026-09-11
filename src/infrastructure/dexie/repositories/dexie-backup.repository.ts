@@ -17,9 +17,14 @@ import {
   detectEntityByHeaders,
 } from '../../../domain/backup/entity-detection';
 import type { InfrastructureError } from '../../errors';
-import type { PDVDatabase } from '../dexie-database';
+import {
+  CONFIG_ID,
+  TICKET_DEFAULTS,
+  type PDVDatabase,
+} from '../dexie-database';
 import { toInfrastructureError } from '../dexie-errors';
 import { backfillOrderItemBatch } from '../order-item-batch-backfill';
+import { reconcileTicketCounter } from '../../../domain/config/config.rules';
 
 type Row = Record<string, unknown>;
 
@@ -266,8 +271,30 @@ export class DexieBackupRepository implements BackupRepository {
         }
         imported[entity] = cleaned.length;
       }
+      await this.reconcileTickets(rowsByEntity.get('orders') ?? []);
     });
     return imported;
+  }
+
+  private async reconcileTickets(orderRows: Row[]): Promise<void> {
+    if (orderRows.length === 0) return;
+    const table = this.db.table('config');
+    const stored = ((await table.toArray()) as Row[])[0];
+    const counter =
+      typeof stored?.ticketCounter === 'number'
+        ? stored.ticketCounter
+        : TICKET_DEFAULTS.ticketCounter;
+    const reconciled = reconcileTicketCounter(
+      counter,
+      orderRows.map((row) => row.ticket),
+    );
+    if (reconciled === counter) return;
+    await table.put({
+      ...TICKET_DEFAULTS,
+      id: CONFIG_ID,
+      ...stored,
+      ticketCounter: reconciled,
+    });
   }
 
   private async putConfig(rows: Row[]): Promise<void> {

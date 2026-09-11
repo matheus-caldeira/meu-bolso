@@ -59,6 +59,7 @@ const INPUT = {
   document: '123',
   phone: '999',
   address: 'Rua A',
+  ticketCounter: 5,
   ticketLimit: 99,
   ticketAutoReset: true,
   statusControlEnabled: false,
