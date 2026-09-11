@@ -16,3 +16,10 @@ export function formatTime(timestamp: number): string {
 export function formatDateTime(timestamp: number): string {
   return formatDate(timestamp) + ' ' + formatTime(timestamp);
 }
+
+export function formatBatchTime(timestamp: number): string {
+  const at = new Date(timestamp);
+  const hours = String(at.getHours()).padStart(2, '0');
+  const minutes = String(at.getMinutes()).padStart(2, '0');
+  return `${hours}h${minutes}`;
+}

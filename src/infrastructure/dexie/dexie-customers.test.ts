@@ -46,6 +46,14 @@ describe('DexieCustomerRepository CRUD', () => {
     expect(isRight(missing) && missing.right).toBeUndefined();
 
     if (isRight(created)) {
+      const byUid = await repo.findByUid(created.right.uid);
+      expect(isRight(byUid) && byUid.right?.name).toBe('Ana');
+    }
+
+    const missingUid = await repo.findByUid('nao-existe');
+    expect(isRight(missingUid) && missingUid.right).toBeUndefined();
+
+    if (isRight(created)) {
       const updated = await repo.update(
         created.right.uid,
         data({ name: 'Ana Paula', phone: '2', addresses: ['Rua X'] }),
@@ -94,6 +102,7 @@ describe('DexieCustomerRepository CRUD', () => {
     db.close();
     expect(isLeft(await repo.list())).toBe(true);
     expect(isLeft(await repo.findByPhone('1'))).toBe(true);
+    expect(isLeft(await repo.findByUid('uid'))).toBe(true);
     expect(isLeft(await repo.create(data()))).toBe(true);
     expect(isLeft(await repo.update('uid', data()))).toBe(true);
     expect(isLeft(await repo.remove('uid'))).toBe(true);

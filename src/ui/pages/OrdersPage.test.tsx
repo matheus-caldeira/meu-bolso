@@ -86,6 +86,8 @@ function makeOrder(partial: Partial<Order>): Order {
         salePrice: 5,
         costPrice: 1,
         qty: 1,
+        batchId: 'b-1',
+        addedAt: 1000,
       },
     ],
     total: 5,
@@ -116,6 +118,8 @@ const ORDERS: Order[] = [
         salePrice: 5,
         costPrice: 1,
         qty: 1,
+        batchId: 'b-1',
+        addedAt: 1000,
       },
       {
         productUid: 'product-2',
@@ -123,6 +127,8 @@ const ORDERS: Order[] = [
         salePrice: 5,
         costPrice: 1,
         qty: 2,
+        batchId: 'b-1',
+        addedAt: 1000,
       },
     ],
   }),
@@ -168,6 +174,7 @@ const CONFIG: BusinessConfig = {
   printerPaperWidth: 80,
   printerCodepage: 'cp860',
   printerAutoPrintOnClose: false,
+  printerBatchIncludesPrevious: true,
   layoutMode: 'auto',
 };
 

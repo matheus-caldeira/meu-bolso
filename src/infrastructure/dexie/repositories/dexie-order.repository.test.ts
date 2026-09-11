@@ -15,7 +15,16 @@ function baseOrder(sessionUid: string): NewOrder {
     uid: createUid(),
     businessTypeId: 'quick_sale',
     sessionUid,
-    items: [{ name: 'X', salePrice: 1, costPrice: 0, qty: 1 }],
+    items: [
+      {
+        name: 'X',
+        salePrice: 1,
+        costPrice: 0,
+        qty: 1,
+        batchId: 'b-1',
+        addedAt: 1000,
+      },
+    ],
     total: 1,
     paymentMethod: null,
     customerName: '',
@@ -124,7 +133,14 @@ describe('DexieOrderRepository refs por uid', () => {
       await repo.create(order);
 
       const items: OrderItem[] = [
-        { name: 'Refri', salePrice: 5, costPrice: 2, qty: 2 },
+        {
+          name: 'Refri',
+          salePrice: 5,
+          costPrice: 2,
+          qty: 2,
+          batchId: 'b-1',
+          addedAt: 1000,
+        },
       ];
       const result = await repo.replaceItems(order.uid, items, 10);
       expect(isRight(result)).toBe(true);

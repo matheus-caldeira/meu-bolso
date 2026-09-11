@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Order, OrderItem } from './order.entity';
 import {
+  averageTicket,
   pendingOrders,
   productRanking,
   recentOrders,
@@ -15,6 +16,8 @@ const item = (over: Partial<OrderItem> = {}): OrderItem => ({
   costPrice: 8,
   qty: 1,
   ...over,
+  batchId: 'b-1',
+  addedAt: 1000,
 });
 
 const order = (over: Partial<Order> = {}): Order => ({
@@ -35,6 +38,22 @@ const order = (over: Partial<Order> = {}): Order => ({
   ...over,
 });
 
+describe('averageTicket', () => {
+  it('divides the paid total by the number of paid orders', () => {
+    const orders = [
+      order({ id: 1, total: 100 }),
+      order({ id: 2, total: 50 }),
+      order({ id: 3, total: 999, status: 'open' }),
+    ];
+
+    expect(averageTicket(orders)).toBe(75);
+  });
+
+  it('returns zero when there are no paid orders', () => {
+    expect(averageTicket([order({ status: 'open' })])).toBe(0);
+  });
+});
+
 describe('summarizeSales', () => {
   it('computes totals, profit and margin for paid orders only', () => {
     const summary = summarizeSales([
@@ -49,6 +68,16 @@ describe('summarizeSales', () => {
     expect(summary.profit).toBe(60);
     expect(summary.margin).toBe(60);
     expect(summary.paidCount).toBe(1);
+  });
+
+  it('includes the average ticket of the paid orders', () => {
+    const orders = [
+      order({ id: 1, total: 100 }),
+      order({ id: 2, total: 50 }),
+      order({ id: 3, total: 999, status: 'open' }),
+    ];
+
+    expect(summarizeSales(orders).averageTicket).toBe(75);
   });
 
   it('returns zero margin when there are no sales', () => {

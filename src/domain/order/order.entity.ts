@@ -18,6 +18,8 @@ export interface OrderItem {
   observation?: string;
   customizations?: OrderCustomizationItem[];
   customizationTotal?: number;
+  batchId: string;
+  addedAt: number;
 }
 
 export interface Order {

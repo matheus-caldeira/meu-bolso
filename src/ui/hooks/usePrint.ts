@@ -8,9 +8,9 @@ import type { SessionReport } from '../../application/report/report.usecases';
 import type { Receipt } from '../../domain/printing/receipt.entity';
 import type { ReceiptPrinter } from '../../domain/printing/receipt-printer';
 import {
+  buildBatchReceipt,
   buildDayReportReceipt,
   buildOrderReceipt,
-  buildTabNumberReceipt,
   buildPendingTabsReceipt,
   buildStockReceipt,
 } from '../../domain/printing/receipt.builders';
@@ -25,14 +25,17 @@ import {
   TriggeredReceiptPrinter,
   type PrintTrigger,
 } from '../../infrastructure/printing/triggered-receipt-printer';
+import { customerDetailValues } from '../i18n/customerDetails';
 import { useReceiptPrintHandler } from '../molecules/receipt-print-context';
 import { useToast } from '../molecules/toast-context';
 
 interface PrinterSettings {
   businessName: string;
+  businessTypeId: string;
   driver: PrinterDriver;
   paperWidth: PaperWidth;
   codepage: PrinterCodepage;
+  includePrevious: boolean;
 }
 
 function buildPrinter(
@@ -54,9 +57,11 @@ export function usePrint() {
   const [printing, setPrinting] = useState(false);
   const settingsRef = useRef<PrinterSettings>({
     businessName: '',
+    businessTypeId: '',
     driver: 'browser',
     paperWidth: 80,
     codepage: 'cp860',
+    includePrevious: true,
   });
 
   const loadSettings = useCallback(async (): Promise<PrinterSettings> => {
@@ -64,9 +69,11 @@ export function usePrint() {
     if (!isLeft(result)) {
       settingsRef.current = {
         businessName: result.right.name,
+        businessTypeId: result.right.businessTypeId,
         driver: result.right.printerDriver,
         paperWidth: result.right.printerPaperWidth,
         codepage: result.right.printerCodepage,
+        includePrevious: result.right.printerBatchIncludesPrevious,
       };
     }
     return settingsRef.current;
@@ -105,26 +112,45 @@ export function usePrint() {
     [toast, trigger],
   );
 
+  const loadCustomerDetails = useCallback(
+    async (order: Order, settings: PrinterSettings): Promise<string[]> => {
+      if (!order.customerUid) return [];
+      const result = await container.findCustomerByUid(order.customerUid);
+      if (isLeft(result)) return [];
+      return customerDetailValues(result.right, settings.businessTypeId);
+    },
+    [],
+  );
+
   const printOrder = useCallback(
     async (order: Order) => {
       const settings = await loadSettings();
+      const details = await loadCustomerDetails(order, settings);
       return printReceipt(
-        buildOrderReceipt(order, settings.businessName, Date.now()),
+        buildOrderReceipt(order, settings.businessName, Date.now(), details),
         settings,
       );
     },
-    [loadSettings, printReceipt],
+    [loadCustomerDetails, loadSettings, printReceipt],
   );
 
-  const printTabNumber = useCallback(
-    async (order: Order) => {
+  const printBatch = useCallback(
+    async (order: Order, batchId: string) => {
       const settings = await loadSettings();
+      const details = await loadCustomerDetails(order, settings);
       return printReceipt(
-        buildTabNumberReceipt(order, settings.businessName, Date.now()),
+        buildBatchReceipt(
+          order,
+          batchId,
+          { includePrevious: settings.includePrevious },
+          settings.businessName,
+          Date.now(),
+          details,
+        ),
         settings,
       );
     },
-    [loadSettings, printReceipt],
+    [loadCustomerDetails, loadSettings, printReceipt],
   );
 
   const printStock = useCallback(
@@ -162,7 +188,7 @@ export function usePrint() {
 
   return {
     printOrder,
-    printTabNumber,
+    printBatch,
     printStock,
     printPendingTabs,
     printDayReport,

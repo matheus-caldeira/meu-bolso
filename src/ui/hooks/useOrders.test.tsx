@@ -64,6 +64,7 @@ const CONFIG: BusinessConfig = {
   printerPaperWidth: 80,
   printerCodepage: 'cp860',
   printerAutoPrintOnClose: false,
+  printerBatchIncludesPrevious: true,
 };
 
 function page(orders: Order[], total: number, hasMore: boolean) {

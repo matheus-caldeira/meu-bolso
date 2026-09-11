@@ -13,6 +13,11 @@ export function makeListCustomers(repository: CustomerRepository) {
   return (): Promise<Either<AppError, Customer[]>> => repository.list();
 }
 
+export function makeFindCustomerByUid(repository: CustomerRepository) {
+  return (uid: string): Promise<Either<AppError, Customer | undefined>> =>
+    repository.findByUid(uid);
+}
+
 const SEARCH_LIMIT = 6;
 
 function normalize(value: string): string {

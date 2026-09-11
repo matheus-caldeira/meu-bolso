@@ -35,6 +35,7 @@ import {
   makeUpdateItem,
 } from '../application/customization/customization.usecases';
 import {
+  makeFindCustomerByUid,
   makeListCustomers,
   makeRemoveCustomer,
   makeSaveCustomer,
@@ -69,9 +70,15 @@ import {
 import {
   makeListReportSessions,
   makeLoadDashboard,
+  makeLoadPendingAll,
   makeLoadSessionReport,
 } from '../application/report/report.usecases';
 import { makeLoadStockReport } from '../application/report/stock.usecases';
+import {
+  makeBuildReportMessage,
+  makeExportReportSpreadsheet,
+} from '../application/report/export-report.usecases';
+import { xlsxSpreadsheetWriter } from '../infrastructure/export/xlsx-spreadsheet-writer';
 import {
   makeBuildBackupSnapshot,
   makeExportBackup,
@@ -81,6 +88,7 @@ import {
   makeLoadDemo,
   makeWipeData,
 } from '../application/backup/backup.usecases';
+import { makeImportAllBackup } from '../application/backup/import-all.usecase';
 import {
   makeCreateMember,
   makeDeleteMember,
@@ -211,6 +219,7 @@ export function createContainer() {
     removeItem: makeRemoveItem(customizations),
     listCustomers: makeListCustomers(customers),
     searchCustomers: makeSearchCustomers(customers),
+    findCustomerByUid: makeFindCustomerByUid(customers),
     saveCustomer: makeSaveCustomer(customers),
     removeCustomer: makeRemoveCustomer(customers),
     loadCashSummary: makeLoadCashSummary(cash, orders),
@@ -236,11 +245,19 @@ export function createContainer() {
     listReportSessions: makeListReportSessions(cash),
     loadSessionReport: makeLoadSessionReport(orders),
     loadDashboard: makeLoadDashboard(orders),
+    loadPendingAll: makeLoadPendingAll(orders),
     loadStockReport: makeLoadStockReport(products),
+    exportReportSpreadsheet: makeExportReportSpreadsheet(
+      orders,
+      products,
+      xlsxSpreadsheetWriter,
+    ),
+    buildReportMessage: makeBuildReportMessage(orders, products),
     buildBackupSnapshot: makeBuildBackupSnapshot(backup),
     exportBackup: makeExportBackup(backup),
     exportEntity: makeExportEntity(backup),
     importBackup: makeImportBackup(backup),
+    importAllBackup: makeImportAllBackup(backup),
     hasData: makeHasData(backup),
     loadDemo: makeLoadDemo(backup),
     wipeData: makeWipeData(backup),

@@ -22,6 +22,7 @@ import type {
 } from '../../../domain/finance/payment-method.entity';
 import type { NewProduct } from '../../../domain/product/product.entity';
 import type { BusinessConfig } from '../../../domain/config/config.entity';
+import type { NewOrder } from '../../../domain/order/order.entity';
 
 interface SavedFile {
   content: string;
@@ -68,6 +69,7 @@ const businessConfig = (name: string): BusinessConfig => ({
   printerPaperWidth: 80,
   printerCodepage: 'cp860',
   printerAutoPrintOnClose: false,
+  printerBatchIncludesPrevious: true,
   layoutMode: 'auto',
 });
 
@@ -319,6 +321,99 @@ describe('DexieBackupRepository — tabelas finance', () => {
     expect(stored).toHaveLength(1);
     expect(stored[0].id).not.toBe(99);
     expect(stored[0].name).toBe('Ana');
+  });
+
+  it('importEntity faz o backfill de batchId e addedAt em itens de pedido legados', async () => {
+    const legacyOrder = {
+      uid: 'ord-1',
+      businessTypeId: 'bar',
+      sessionUid: 'ses-1',
+      items: [
+        {
+          name: 'Suco',
+          salePrice: 5,
+          costPrice: 2,
+          qty: 1,
+        },
+      ],
+      total: 5,
+      paymentMethod: null,
+      customerName: '',
+      customerPhone: '',
+      ticket: '001',
+      stage: 'finalizado',
+      status: 'open',
+      createdAt: 1000,
+      updatedAt: 1000,
+    };
+    const file = new File([JSON.stringify([legacyOrder])], 'pedidos.json');
+    const result = await repo.importEntity('orders', file);
+    expect(isRight(result)).toBe(true);
+    if (!isRight(result)) return;
+    expect(result.right).toBe(1);
+    const stored = await db.orders.toArray();
+    expect(stored[0].items[0].batchId).toBe('ord-1#1000');
+    expect(stored[0].items[0].addedAt).toBe(1000);
+  });
+
+  it('importEntity preserva batchId e addedAt já presentes em itens de pedido', async () => {
+    const order: NewOrder = {
+      uid: 'ord-2',
+      businessTypeId: 'bar',
+      sessionUid: 'ses-1',
+      items: [
+        {
+          name: 'Suco',
+          salePrice: 5,
+          costPrice: 2,
+          qty: 1,
+          batchId: 'ord-2#500',
+          addedAt: 500,
+        },
+      ],
+      total: 5,
+      paymentMethod: null,
+      customerName: '',
+      customerPhone: '',
+      ticket: '002',
+      stage: 'finalizado',
+      status: 'open',
+      createdAt: 2000,
+      updatedAt: 2000,
+    };
+    const file = new File([JSON.stringify([order])], 'pedidos.json');
+    const result = await repo.importEntity('orders', file);
+    expect(isRight(result)).toBe(true);
+    if (!isRight(result)) return;
+    const stored = await db.orders.toArray();
+    expect(stored[0].items[0].batchId).toBe('ord-2#500');
+    expect(stored[0].items[0].addedAt).toBe(500);
+  });
+
+  it('importEntity tolera pedido legado sem a propriedade items', async () => {
+    const orderWithoutItems = {
+      uid: 'ord-3',
+      businessTypeId: 'bar',
+      sessionUid: 'ses-1',
+      total: 0,
+      paymentMethod: null,
+      customerName: '',
+      customerPhone: '',
+      ticket: '003',
+      stage: 'finalizado',
+      status: 'open',
+      createdAt: 3000,
+      updatedAt: 3000,
+    };
+    const file = new File(
+      [JSON.stringify([orderWithoutItems])],
+      'pedidos.json',
+    );
+    const result = await repo.importEntity('orders', file);
+    expect(isRight(result)).toBe(true);
+    if (!isRight(result)) return;
+    const stored = await db.orders.toArray();
+    expect(stored[0].items).toEqual([]);
   });
 
   it('reimporta um CSV de lançamentos preservando valores compostos', async () => {

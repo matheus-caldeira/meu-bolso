@@ -17,6 +17,8 @@ describe('Order is self-sufficient and merge-resilient', () => {
       qty: 2,
       customizations: [customization],
       customizationTotal: 0.5,
+      batchId: 'b-1',
+      addedAt: 1000,
     };
     const order: Order = {
       uid: 'o1',

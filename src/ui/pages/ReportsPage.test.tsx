@@ -1,11 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import {
+  cleanup,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ReportsPage } from './ReportsPage';
 import { ToastProvider } from '../molecules/Toast';
 import { left, right } from '../../domain/shared/either';
 import { AppError } from '../../domain/shared/errors';
 import type { SessionReport } from '../../application/report/report.usecases';
+import type { BusinessConfig } from '../../domain/config/config.entity';
 import type { Session } from '../../domain/cash/cash.entity';
 import type { Order, OrderStatus } from '../../domain/order/order.entity';
 import type { Product } from '../../domain/product/product.entity';
@@ -13,6 +20,8 @@ import type { Product } from '../../domain/product/product.entity';
 const listReportSessions = vi.fn();
 const loadSessionReport = vi.fn();
 const loadStockReport = vi.fn();
+const loadPendingAll = vi.fn();
+const readConfig = vi.fn();
 const printDayReport = vi.fn();
 const printStock = vi.fn();
 const printPendingTabs = vi.fn();
@@ -22,6 +31,17 @@ vi.mock('../../app/container', () => ({
     listReportSessions: () => listReportSessions(),
     loadSessionReport: (uid: string) => loadSessionReport(uid),
     loadStockReport: () => loadStockReport(),
+    loadPendingAll: () => loadPendingAll(),
+    readConfig: () => readConfig(),
+  },
+}));
+
+const exportPanelTarget = vi.fn();
+
+vi.mock('../organisms/ReportExportPanel', () => ({
+  ReportExportPanel: ({ target }: { target: unknown }) => {
+    exportPanelTarget(target);
+    return <div>painel de exportação</div>;
   },
 }));
 
@@ -40,12 +60,25 @@ class FakeError extends AppError {
   readonly layer = 'application' as const;
 }
 
+const DAY_ONE = new Date(2026, 8, 8, 10, 0).getTime();
+const DAY_TWO_MORNING = new Date(2026, 8, 9, 9, 0).getTime();
+const DAY_TWO_NIGHT = new Date(2026, 8, 9, 19, 0).getTime();
+
 const SESSIONS: Session[] = [
   {
     id: 1,
     uid: 'session-1',
-    openedAt: 1700000000000,
-    closedAt: 1700003600000,
+    openedAt: DAY_ONE,
+    closedAt: DAY_ONE + 3600000,
+    cashInitial: 0,
+    cashFinal: 0,
+    notes: '',
+  },
+  {
+    id: 3,
+    uid: 'session-3',
+    openedAt: DAY_TWO_MORNING,
+    closedAt: DAY_TWO_MORNING + 3600000,
     cashInitial: 0,
     cashFinal: 0,
     notes: '',
@@ -53,13 +86,18 @@ const SESSIONS: Session[] = [
   {
     id: 2,
     uid: 'session-2',
-    openedAt: 1700100000000,
+    openedAt: DAY_TWO_NIGHT,
     closedAt: null,
     cashInitial: 0,
     cashFinal: null,
     notes: '',
   },
 ];
+
+const CONFIG = {
+  name: 'Grupo Escoteiro',
+  printerPaperWidth: 80,
+} as BusinessConfig;
 
 function makeOrder(ticket: string, status: OrderStatus, name: string): Order {
   return {
@@ -75,8 +113,8 @@ function makeOrder(ticket: string, status: OrderStatus, name: string): Order {
     customerPhone: '',
     stage: 'aceito',
     status,
-    createdAt: 1700100000000,
-    updatedAt: 1700100000000,
+    createdAt: DAY_TWO_NIGHT,
+    updatedAt: DAY_TWO_NIGHT,
   };
 }
 
@@ -87,6 +125,7 @@ const FULL_REPORT: SessionReport = {
     profit: 120,
     margin: 60,
     paidCount: 4,
+    averageTicket: 50,
   },
   byMethod: { pix: 100, mistura: 100 },
   products: [{ name: 'Coxinha', qty: 5, total: 150, cost: 50 }],
@@ -101,17 +140,30 @@ function renderPage() {
   );
 }
 
+async function openTab(name: string) {
+  await userEvent.click(await screen.findByRole('tab', { name }));
+}
+
+function sessionRegion() {
+  return within(screen.getByRole('region', { name: 'Relatório da sessão' }));
+}
+
 describe('ReportsPage', () => {
   beforeEach(() => {
     listReportSessions.mockReset();
     loadSessionReport.mockReset();
     loadStockReport.mockReset();
+    loadPendingAll.mockReset();
+    readConfig.mockReset();
     printDayReport.mockReset();
     printStock.mockReset();
     printPendingTabs.mockReset();
+    exportPanelTarget.mockReset();
     listReportSessions.mockResolvedValue(right(SESSIONS));
     loadSessionReport.mockResolvedValue(right(FULL_REPORT));
     loadStockReport.mockResolvedValue(right([]));
+    loadPendingAll.mockResolvedValue(right([]));
+    readConfig.mockResolvedValue(right(CONFIG));
   });
   afterEach(cleanup);
 
@@ -123,24 +175,145 @@ describe('ReportsPage', () => {
     );
   });
 
-  it('renders the active session pill with the active suffix selected by default', async () => {
+  it('starts on the day of the most recent session', async () => {
     renderPage();
     await waitFor(() =>
-      expect(screen.getByText(/\(ativa\)/)).toBeInTheDocument(),
+      expect(screen.getByRole('combobox', { name: 'Dia' })).toHaveValue(
+        '09/09/2026',
+      ),
     );
-    const activePill = screen.getByText(/\(ativa\)/).closest('button');
-    expect(activePill).toHaveAttribute('aria-pressed', 'true');
+    await waitFor(() =>
+      expect(loadSessionReport).toHaveBeenCalledWith('session-2'),
+    );
   });
 
-  it('renders the summary cards including formatted margin', async () => {
+  it('lists the matching days while typing in the autocomplete', async () => {
+    renderPage();
+    const input = await screen.findByRole('combobox', { name: 'Dia' });
+    await userEvent.clear(input);
+    await userEvent.type(input, '08/09');
+    const option = await screen.findByRole('option', { name: /08\/09\/2026/ });
+    await userEvent.click(option);
+    await waitFor(() =>
+      expect(loadSessionReport).toHaveBeenCalledWith('session-1'),
+    );
+  });
+
+  it('shows the session picker only when the day has more than one session', async () => {
+    renderPage();
+    await waitFor(() =>
+      expect(screen.getByRole('combobox', { name: 'Dia' })).toHaveValue(
+        '09/09/2026',
+      ),
+    );
+    expect(screen.getByRole('button', { name: /19:00/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /09:00/ })).toBeInTheDocument();
+  });
+
+  it('hides the session picker when the day has a single session', async () => {
+    const input = await (async () => {
+      renderPage();
+      return screen.findByRole('combobox', { name: 'Dia' });
+    })();
+    await userEvent.clear(input);
+    await userEvent.type(input, '08/09');
+    await userEvent.click(
+      await screen.findByRole('option', { name: /08\/09\/2026/ }),
+    );
+    await waitFor(() =>
+      expect(loadSessionReport).toHaveBeenCalledWith('session-1'),
+    );
+    expect(
+      screen.queryByRole('button', { name: /10:00/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('switches the report when another session of the day is picked', async () => {
+    renderPage();
+    await waitFor(() =>
+      expect(loadSessionReport).toHaveBeenCalledWith('session-2'),
+    );
+    await userEvent.click(screen.getByRole('button', { name: /09:00/ }));
+    await waitFor(() =>
+      expect(loadSessionReport).toHaveBeenLastCalledWith('session-3'),
+    );
+  });
+
+  it('renders the summary cards on the summary tab', async () => {
     renderPage();
     await waitFor(() =>
       expect(screen.getByText('R$ 200,00')).toBeInTheDocument(),
     );
     expect(screen.getByText('Total Vendas')).toBeInTheDocument();
     expect(screen.getByText('4')).toBeInTheDocument();
-    expect(screen.getByText('R$ 120,00')).toBeInTheDocument();
     expect(screen.getByText('60.0%')).toBeInTheDocument();
+  });
+
+  it('shows the average ticket among the session cards', async () => {
+    renderPage();
+    await waitFor(() =>
+      expect(
+        sessionRegion().getByText('Ticket Médio').parentElement,
+      ).toHaveTextContent('R$ 50,00'),
+    );
+  });
+
+  it('separates the current situation from the session report', async () => {
+    renderPage();
+    expect(
+      await screen.findByRole('tablist', { name: 'Situação atual' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('tablist', { name: 'Relatório da sessão' }),
+    ).toBeInTheDocument();
+  });
+
+  it('keeps the current situation available with no session at all', async () => {
+    listReportSessions.mockResolvedValue(right([]));
+    loadPendingAll.mockResolvedValue(right([makeOrder('77', 'open', 'Zeca')]));
+    renderPage();
+    expect(
+      await screen.findByRole('tablist', { name: 'Situação atual' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Nenhuma sessão encontrada')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('combobox', { name: 'Dia' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('lists the pending orders of every session, not only the selected one', async () => {
+    loadPendingAll.mockResolvedValue(
+      right([
+        makeOrder('50', 'open', 'Vera'),
+        makeOrder('51', 'pending', 'Caio'),
+      ]),
+    );
+    renderPage();
+    await openTab('Comandas pendentes');
+    expect(await screen.findByText('50 — Vera')).toBeInTheDocument();
+    expect(screen.getByText('51 — Caio')).toBeInTheDocument();
+    expect(screen.queryByText('10 — Ana')).not.toBeInTheDocument();
+  });
+
+  it('says there is nothing pending when every tab is settled', async () => {
+    loadPendingAll.mockResolvedValue(right([]));
+    renderPage();
+    await openTab('Comandas pendentes');
+    expect(
+      await screen.findByText('Nenhuma comanda pendente'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Imprimir' })).toBeDisabled();
+  });
+
+  it('prints the pending orders of every session', async () => {
+    const all = [makeOrder('50', 'open', 'Vera')];
+    loadPendingAll.mockResolvedValue(right(all));
+    renderPage();
+    await openTab('Comandas pendentes');
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Imprimir' }),
+    );
+    expect(printPendingTabs).toHaveBeenCalledWith(all);
   });
 
   it('renders payment methods with percentages and labels', async () => {
@@ -156,36 +329,116 @@ describe('ReportsPage', () => {
       expect(screen.getByText('Coxinha')).toBeInTheDocument(),
     );
     expect(screen.getByText('5x')).toBeInTheDocument();
-    expect(screen.getByText('R$ 150,00')).toBeInTheDocument();
   });
 
-  it('renders pending orders with open and pending badges', async () => {
-    renderPage();
-    await waitFor(() => expect(screen.getByText('#10')).toBeInTheDocument());
-    expect(screen.getByText('Aberto')).toBeInTheDocument();
-    expect(screen.getByText('Pendente')).toBeInTheDocument();
-    expect(screen.getByText('Ana')).toBeInTheDocument();
-  });
-
-  it('switches the report when a different session is selected', async () => {
+  it('shows the day closing receipt on its tab', async () => {
     renderPage();
     await waitFor(() =>
       expect(loadSessionReport).toHaveBeenCalledWith('session-2'),
     );
-    loadSessionReport.mockResolvedValue(
-      right({ ...FULL_REPORT, summary: { ...FULL_REPORT.summary, margin: 0 } }),
-    );
-    const closedPill = screen
-      .getAllByRole('button')
-      .find((button) => button.getAttribute('aria-pressed') === 'false')!;
-    await userEvent.click(closedPill);
+    await openTab('Fechamento do dia');
     await waitFor(() =>
-      expect(loadSessionReport).toHaveBeenCalledWith('session-1'),
+      expect(sessionRegion().getByText('Total de vendas')).toBeInTheDocument(),
     );
-    await waitFor(() => expect(screen.getByText('0.0%')).toBeInTheDocument());
+    expect(sessionRegion().getByText('Margem')).toBeInTheDocument();
   });
 
-  it('renders zero percentages when there are no sales', async () => {
+  it('prints the day closing receipt from its tab', async () => {
+    renderPage();
+    await waitFor(() =>
+      expect(loadSessionReport).toHaveBeenCalledWith('session-2'),
+    );
+    await openTab('Fechamento do dia');
+    await userEvent.click(
+      sessionRegion().getByRole('button', { name: 'Imprimir' }),
+    );
+    expect(printDayReport).toHaveBeenCalledWith(FULL_REPORT);
+  });
+
+  it('shows the stock receipt on its tab', async () => {
+    loadStockReport.mockResolvedValue(
+      right([{ uid: 'p1', name: 'Refri', stock: 3 }] as Product[]),
+    );
+    renderPage();
+    await openTab('Estoque');
+    expect(await screen.findByText('Estoque atual')).toBeInTheDocument();
+    expect(screen.getByText('Refri')).toBeInTheDocument();
+    expect(screen.getByText('3')).toBeInTheDocument();
+  });
+
+  it('prints the stock receipt from its tab', async () => {
+    const products = [{ uid: 'p1', name: 'Refri', stock: 3 }] as Product[];
+    loadStockReport.mockResolvedValue(right(products));
+    renderPage();
+    await openTab('Estoque');
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Imprimir' }),
+    );
+    expect(printStock).toHaveBeenCalledWith(products);
+  });
+
+  it('toasts when loading the stock report fails', async () => {
+    loadStockReport.mockResolvedValue(left(new FakeError('falha estoque')));
+    renderPage();
+    await openTab('Estoque');
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent('falha estoque'),
+    );
+    expect(printStock).not.toHaveBeenCalled();
+  });
+
+  it('abre o painel de exportação com a sessão e o dia escolhidos', async () => {
+    renderPage();
+    await waitFor(() =>
+      expect(loadSessionReport).toHaveBeenCalledWith('session-2'),
+    );
+    await openTab('Exportar');
+
+    expect(await screen.findByText('painel de exportação')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(exportPanelTarget).toHaveBeenLastCalledWith({
+        sessionUid: 'session-2',
+        businessName: 'Grupo Escoteiro',
+        day: '09/09/2026',
+      }),
+    );
+  });
+
+  it('keeps the default business name when the config fails to load', async () => {
+    readConfig.mockResolvedValue(left(new FakeError('falha config')));
+    renderPage();
+    await waitFor(() =>
+      expect(loadSessionReport).toHaveBeenCalledWith('session-2'),
+    );
+    await openTab('Fechamento do dia');
+    expect(await screen.findByText('Total de vendas')).toBeInTheDocument();
+    expect(screen.queryByText('Grupo Escoteiro')).not.toBeInTheDocument();
+  });
+
+  it('leaves the day field empty while no session is selected', async () => {
+    listReportSessions.mockReturnValue(new Promise(() => {}));
+    renderPage();
+    await waitFor(() => expect(listReportSessions).toHaveBeenCalled());
+    expect(screen.getByText('Nenhuma sessão encontrada')).toBeInTheDocument();
+  });
+
+  it('ignores a resolved stock report after unmount', async () => {
+    let resolveStock: (value: unknown) => void = () => {};
+    loadStockReport.mockReturnValue(
+      new Promise((resolve) => {
+        resolveStock = resolve;
+      }),
+    );
+    const { unmount } = renderPage();
+    await openTab('Estoque');
+    await waitFor(() => expect(loadStockReport).toHaveBeenCalled());
+    unmount();
+    resolveStock(right([{ uid: 'p1', name: 'Refri', stock: 3 }] as Product[]));
+    await Promise.resolve();
+    expect(screen.queryByText('Refri')).not.toBeInTheDocument();
+  });
+
+  it('renders zero percentages when a method has no sales', async () => {
     loadSessionReport.mockResolvedValue(
       right({
         summary: {
@@ -205,7 +458,7 @@ describe('ReportsPage', () => {
     expect(screen.getByText('0%')).toBeInTheDocument();
   });
 
-  it('shows empty hints and hides pending when the report is empty', async () => {
+  it('shows empty hints when the report has no sales', async () => {
     loadSessionReport.mockResolvedValue(
       right({
         summary: {
@@ -225,78 +478,5 @@ describe('ReportsPage', () => {
       expect(screen.getAllByText('Nenhuma venda ainda').length).toBe(2),
     );
     expect(screen.queryByText('Pedidos Pendentes')).not.toBeInTheDocument();
-  });
-
-  it('prints the day report when the button is clicked', async () => {
-    renderPage();
-    await waitFor(() =>
-      expect(
-        screen.getByRole('button', { name: 'Imprimir fechamento do dia' }),
-      ).toBeEnabled(),
-    );
-    await userEvent.click(
-      screen.getByRole('button', { name: 'Imprimir fechamento do dia' }),
-    );
-    expect(printDayReport).toHaveBeenCalledWith(FULL_REPORT);
-  });
-
-  it('loads and prints the stock report when the button is clicked', async () => {
-    const products = [{ uid: 'p1', name: 'Refri', stock: 3 }] as Product[];
-    loadStockReport.mockResolvedValue(right(products));
-    renderPage();
-    await waitFor(() =>
-      expect(
-        screen.getByRole('button', { name: 'Imprimir estoque' }),
-      ).toBeInTheDocument(),
-    );
-    await userEvent.click(
-      screen.getByRole('button', { name: 'Imprimir estoque' }),
-    );
-    await waitFor(() => expect(printStock).toHaveBeenCalledWith(products));
-  });
-
-  it('toasts when loading the stock report fails', async () => {
-    loadStockReport.mockResolvedValue(left(new FakeError('falha estoque')));
-    renderPage();
-    await waitFor(() =>
-      expect(
-        screen.getByRole('button', { name: 'Imprimir estoque' }),
-      ).toBeInTheDocument(),
-    );
-    await userEvent.click(
-      screen.getByRole('button', { name: 'Imprimir estoque' }),
-    );
-    await waitFor(() =>
-      expect(screen.getByRole('status')).toHaveTextContent('falha estoque'),
-    );
-    expect(printStock).not.toHaveBeenCalled();
-  });
-
-  it('prints the pending tabs when the button is clicked', async () => {
-    renderPage();
-    await waitFor(() =>
-      expect(
-        screen.getByRole('button', { name: 'Imprimir comandas pendentes' }),
-      ).toBeEnabled(),
-    );
-    await userEvent.click(
-      screen.getByRole('button', { name: 'Imprimir comandas pendentes' }),
-    );
-    expect(printPendingTabs).toHaveBeenCalledWith(FULL_REPORT.pending);
-  });
-
-  it('disables the day report and pending tabs buttons while the report is loading', async () => {
-    let resolve: (value: unknown) => void = () => {};
-    loadSessionReport.mockReturnValue(new Promise((r) => (resolve = r)));
-    renderPage();
-    await waitFor(() =>
-      expect(
-        screen.getByRole('button', { name: 'Imprimir fechamento do dia' }),
-      ).toBeDisabled(),
-    );
-    expect(
-      screen.getByRole('button', { name: 'Imprimir comandas pendentes' }),
-    ).toBeDisabled();
-    resolve(right(FULL_REPORT));
   });
 });

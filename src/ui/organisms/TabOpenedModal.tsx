@@ -36,7 +36,7 @@ export function TabOpenedModal({
           Continuar comprando
         </Button>
         <Button variant="ghost" fullWidth onClick={onPrint}>
-          <Printer size={16} /> Imprimir número
+          <Printer size={16} /> Imprimir comanda
         </Button>
       </div>
     </Modal>

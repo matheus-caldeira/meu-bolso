@@ -6,6 +6,7 @@ export interface SalesSummary {
   profit: number;
   margin: number;
   paidCount: number;
+  averageTicket: number;
 }
 
 export interface ProductRankingEntry {
@@ -38,7 +39,14 @@ export function summarizeSales(orders: Order[]): SalesSummary {
     profit,
     margin,
     paidCount: paid.length,
+    averageTicket: averageTicket(orders),
   };
+}
+
+export function averageTicket(orders: Order[]): number {
+  const paid = paidOrders(orders);
+  if (paid.length === 0) return 0;
+  return paid.reduce((sum, order) => sum + order.total, 0) / paid.length;
 }
 
 export function salesByMethod(orders: Order[]): Record<string, number> {

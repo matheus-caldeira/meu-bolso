@@ -5,6 +5,7 @@ import { ProductGrid } from '../organisms/ProductGrid';
 import { Cart } from '../organisms/Cart';
 import { CustomizationModal } from '../organisms/CustomizationModal';
 import { TabOpenedModal } from '../organisms/TabOpenedModal';
+import { PrintPromptModal } from '../organisms/PrintPromptModal';
 import { IdentifySaleModal } from '../organisms/IdentifySaleModal';
 import { OpenTabPromptModal } from '../organisms/OpenTabPromptModal';
 import { PaymentPanel } from '../organisms/PaymentPanel';
@@ -17,14 +18,18 @@ import { useSession } from '../hooks/useSession';
 import { useProducts } from '../hooks/useProducts';
 import { usePdvController, type PayOption } from '../hooks/usePdvController';
 import { useTabs } from '../hooks/useTabs';
-import { usePrint } from '../hooks/usePrint';
 import { useIsMobile } from '../hooks/useIsMobile';
+import { usePrint } from '../hooks/usePrint';
 import { useToast } from '../molecules/toast-context';
 import {
   useCustomizationLoader,
   type LoadedCustomizationGroup,
 } from '../hooks/useCustomizationLoader';
-import { findOpenTabForCustomer } from '../../domain/order/order.rules';
+import {
+  findOpenTabForCustomer,
+  stampBatch,
+} from '../../domain/order/order.rules';
+import { createUid } from '../../domain/shared/uid';
 import type { Customer } from '../../domain/customer/customer.entity';
 import type { Order } from '../../domain/order/order.entity';
 import type { Product } from '../../domain/product/product.entity';
@@ -32,6 +37,15 @@ import type { Product } from '../../domain/product/product.entity';
 interface CustomizationState {
   product: Product;
   groups: LoadedCustomizationGroup[];
+}
+
+interface PrintableBatch {
+  order: Order;
+  batchId: string;
+}
+
+interface PendingPrint extends PrintableBatch {
+  goToOrders: boolean;
 }
 
 function PdvSession({ sessionUid }: { sessionUid: string }) {
@@ -44,7 +58,7 @@ function PdvSession({ sessionUid }: { sessionUid: string }) {
     openTab,
     refresh: refreshTabs,
   } = useTabs(sessionUid);
-  const { printTabNumber } = usePrint();
+  const { printBatch, printing } = usePrint();
   const isMobile = useIsMobile();
   const toast = useToast();
   const [searchParams] = useSearchParams();
@@ -59,7 +73,8 @@ function PdvSession({ sessionUid }: { sessionUid: string }) {
   );
   const [quickCustomerOpen, setQuickCustomerOpen] = useState(false);
   const [promptTab, setPromptTab] = useState<Order | null>(null);
-  const [openedTab, setOpenedTab] = useState<Order | null>(null);
+  const [openedTab, setOpenedTab] = useState<PrintableBatch | null>(null);
+  const [printPrompt, setPrintPrompt] = useState<PendingPrint | null>(null);
   const [cartSheetOpen, setCartSheetOpen] = useState(false);
   const [identifyOpen, setIdentifyOpen] = useState(false);
 
@@ -93,16 +108,29 @@ function PdvSession({ sessionUid }: { sessionUid: string }) {
     option: PayOption,
     paymentMethod: string | null,
   ) {
-    const ok = await controller.finalizeSale(option, paymentMethod);
-    if (ok) setPaymentOpen(false);
+    const sale = await controller.finalizeSale(option, paymentMethod);
+    if (!sale) return;
+    setPaymentOpen(false);
+    setPrintPrompt({ ...sale, goToOrders: false });
   }
 
   async function handleLaunchToTab(orderUid: string) {
-    const ok = await addItems(orderUid, controller.cart);
-    if (ok) {
-      controller.clearCart();
-      navigate('/orders');
-    }
+    const batchId = createUid();
+    const items = stampBatch(controller.cart, batchId, Date.now());
+    const updated = await addItems(orderUid, items);
+    if (!updated) return;
+    controller.clearCart();
+    setPrintPrompt({ order: updated, batchId, goToOrders: true });
+  }
+
+  async function handleConfirmPrint(pending: PendingPrint) {
+    await printBatch(pending.order, pending.batchId);
+    handleDismissPrint(pending);
+  }
+
+  function handleDismissPrint(pending: PendingPrint) {
+    if (pending.goToOrders) navigate('/orders');
+    setPrintPrompt(null);
   }
 
   function finishTabOpening() {
@@ -112,18 +140,25 @@ function PdvSession({ sessionUid }: { sessionUid: string }) {
     navigate('/orders');
   }
 
+  async function handlePrintOpenedTab(opened: PrintableBatch) {
+    await printBatch(opened.order, opened.batchId);
+    finishTabOpening();
+  }
+
   async function handleOpenNewTab() {
     const name = controller.customerName.trim();
     if (!name) {
       toast('Defina um nome para o cliente.', 'error');
       return;
     }
+    const batchId = createUid();
     const opened = await openTab(name, {
       customerUid: controller.matchedCustomer?.uid,
+      items: stampBatch(controller.cart, batchId, Date.now()),
     });
     if (!opened) return;
     setSelectedTabUid(opened.uid);
-    setOpenedTab(opened);
+    setOpenedTab({ order: opened, batchId });
     void refreshTabs();
   }
 
@@ -178,6 +213,7 @@ function PdvSession({ sessionUid }: { sessionUid: string }) {
             onCustomerNameChange={controller.onCustomerNameChange}
             customerSuggestions={controller.customerSuggestions}
             onSelectCustomer={handleSelectCustomer}
+            matchedCustomer={controller.matchedCustomer}
             onExpand={() => setCartSheetOpen(true)}
             onOpenTab={handleTabAction}
             onFinalize={handleRequestFinalize}
@@ -264,14 +300,22 @@ function PdvSession({ sessionUid }: { sessionUid: string }) {
         onClose={() => setIdentifyOpen(false)}
       />
 
-      <TabOpenedModal
-        tab={openedTab}
-        onContinue={finishTabOpening}
-        onPrint={() => {
-          void printTabNumber(openedTab!);
-          finishTabOpening();
-        }}
-      />
+      {openedTab && (
+        <TabOpenedModal
+          tab={openedTab.order}
+          onContinue={finishTabOpening}
+          onPrint={() => void handlePrintOpenedTab(openedTab)}
+        />
+      )}
+
+      {printPrompt && (
+        <PrintPromptModal
+          order={printPrompt.order}
+          onPrint={() => void handleConfirmPrint(printPrompt)}
+          onDismiss={() => handleDismissPrint(printPrompt)}
+          printing={printing}
+        />
+      )}
 
       <OpenTabPromptModal
         tab={promptTab}

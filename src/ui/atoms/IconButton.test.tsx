@@ -43,6 +43,17 @@ describe('IconButton', () => {
     expect(button).toHaveClass('extra');
   });
 
+  it('oferece o tamanho grande para alvo de toque confortável', () => {
+    render(
+      <IconButton size="lg" aria-label="Mais ações">
+        x
+      </IconButton>,
+    );
+    const button = screen.getByRole('button', { name: 'Mais ações' });
+    expect(button).toHaveClass('h-11');
+    expect(button).toHaveClass('w-11');
+  });
+
   it('mostra o rótulo ao segurar o botão', async () => {
     vi.useFakeTimers();
     render(<IconButton aria-label="Cliente">x</IconButton>);
@@ -108,7 +119,7 @@ describe('IconButton', () => {
     vi.useRealTimers();
   });
 
-  it('não dispara o clique quando o toque longo mostrou o rótulo', () => {
+  it('dispara o clique mesmo quando o toque longo mostrou o rótulo', () => {
     vi.useFakeTimers();
     const onClick = vi.fn();
     render(
@@ -125,7 +136,7 @@ describe('IconButton', () => {
     fireEvent.pointerUp(button);
     fireEvent.click(button);
 
-    expect(onClick).not.toHaveBeenCalled();
+    expect(onClick).toHaveBeenCalledOnce();
     vi.useRealTimers();
   });
 

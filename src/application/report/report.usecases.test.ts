@@ -23,6 +23,7 @@ import {
 import {
   makeListReportSessions,
   makeLoadDashboard,
+  makeLoadPendingAll,
   makeLoadSessionReport,
 } from './report.usecases';
 
@@ -33,6 +34,8 @@ const item = (over: Partial<OrderItem> = {}): OrderItem => ({
   costPrice: 8,
   qty: 1,
   ...over,
+  batchId: 'b-1',
+  addedAt: 1000,
 });
 
 const order = (over: Partial<Order> = {}): Order => ({
@@ -55,12 +58,13 @@ const order = (over: Partial<Order> = {}): Order => ({
 
 class FakeOrderRepository implements OrderRepository {
   listResult: Either<InfrastructureError, Order[]> = right([]);
+  listAllResult: Either<InfrastructureError, Order[]> = right([]);
 
   async create(o: NewOrder): Promise<Either<InfrastructureError, Order>> {
     return right({ ...o, id: 1 } as Order);
   }
   async listAll(): Promise<Either<InfrastructureError, Order[]>> {
-    return right([]);
+    return this.listAllResult;
   }
   async listBySession(): Promise<Either<InfrastructureError, Order[]>> {
     return this.listResult;
@@ -159,6 +163,29 @@ describe('report use cases', () => {
       const orders = new FakeOrderRepository();
       orders.listResult = left(new ConnectorError('down'));
       const result = await makeLoadSessionReport(orders)('session-1');
+      expect(isLeft(result)).toBe(true);
+    });
+  });
+
+  describe('makeLoadPendingAll', () => {
+    it('keeps the pending orders of every session', async () => {
+      const orders = new FakeOrderRepository();
+      orders.listAllResult = right([
+        order({ id: 1, sessionUid: 'session-1', status: 'open' }),
+        order({ id: 2, sessionUid: 'session-2', status: 'pending' }),
+        order({ id: 3, sessionUid: 'session-2', status: 'paid' }),
+      ]);
+      const result = await makeLoadPendingAll(orders)();
+      expect(isRight(result)).toBe(true);
+      if (isRight(result)) {
+        expect(result.right.map((o) => o.id)).toEqual([1, 2]);
+      }
+    });
+
+    it('propagates a repository failure', async () => {
+      const orders = new FakeOrderRepository();
+      orders.listAllResult = left(new ConnectorError('down'));
+      const result = await makeLoadPendingAll(orders)();
       expect(isLeft(result)).toBe(true);
     });
   });

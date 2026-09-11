@@ -100,6 +100,7 @@ const DATA: DashboardData = {
     profit: 150,
     margin: 60,
     paidCount: 5,
+    averageTicket: 50,
   },
   openCount: 2,
   topProducts: [{ name: 'Burger', qty: 3, total: 90, cost: 30 }],

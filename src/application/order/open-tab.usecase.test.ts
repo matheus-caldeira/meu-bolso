@@ -3,7 +3,12 @@ import { isRight, left, right, type Either } from '../../domain/shared/either';
 import type { InfrastructureError } from '../../infrastructure/errors';
 import { TicketLimitReachedError } from '../../domain/errors';
 import { ConnectorError } from '../../infrastructure/errors';
-import type { NewOrder, Order } from '../../domain/order/order.entity';
+import type {
+  NewOrder,
+  Order,
+  OrderItem,
+} from '../../domain/order/order.entity';
+import type { StockAdjustment } from '../../domain/product/product.repository';
 import type { BusinessConfig } from '../../domain/config/config.entity';
 import type { Repositories } from '../../domain/shared/repositories';
 import type { UnitOfWork } from '../../domain/shared/unit-of-work';
@@ -16,6 +21,19 @@ const scout: BusinessTypeDefinition = {
   fields: { business: [], customer: [] },
 };
 
+function makeItem(overrides: Partial<OrderItem> = {}): OrderItem {
+  return {
+    productUid: 'product-1',
+    name: 'Coca',
+    salePrice: 5,
+    costPrice: 2,
+    qty: 1,
+    batchId: '',
+    addedAt: 0,
+    ...overrides,
+  };
+}
+
 function makeRepositories(
   created: NewOrder[],
   options: {
@@ -23,6 +41,8 @@ function makeRepositories(
     configReadFails?: boolean;
     claims?: number[];
     suggestion?: string;
+    adjustments?: StockAdjustment[][];
+    stockFails?: boolean;
   } = {},
 ): Repositories {
   const suggestion = options.suggestion ?? '042';
@@ -31,6 +51,14 @@ function makeRepositories(
       async create(order: NewOrder) {
         created.push(order);
         return right({ ...order, id: 1 } as Order);
+      },
+    },
+    products: {
+      async adjustStock(adjustments: StockAdjustment[]) {
+        options.adjustments?.push(adjustments);
+        return options.stockFails
+          ? left(new ConnectorError('Falha ao ajustar estoque.'))
+          : right(undefined);
       },
     },
     config: {
@@ -78,6 +106,89 @@ describe('OpenTabUseCase', () => {
     expect(created[0].items).toEqual([]);
     expect(created[0].total).toBe(0);
     expect(created[0].status).toBe('open');
+  });
+
+  it('abre comanda com os itens do carrinho', async () => {
+    const created: NewOrder[] = [];
+    const useCase = new OpenTabUseCase(
+      makeUow(makeRepositories(created)),
+      scout,
+    );
+
+    const result = await useCase.run({
+      sessionUid: 'session-1',
+      customerName: 'Maju (Lobinha)',
+      items: [
+        makeItem({ batchId: 'batch-1', addedAt: 10 }),
+        makeItem({
+          productUid: 'product-2',
+          name: 'Pastel',
+          salePrice: 8,
+          qty: 2,
+          batchId: 'batch-1',
+          addedAt: 10,
+        }),
+      ],
+    });
+
+    expect(isRight(result)).toBe(true);
+    expect(created[0].items).toHaveLength(2);
+    expect(created[0].total).toBe(21);
+    expect(created[0].items.every((item) => item.batchId === 'batch-1')).toBe(
+      true,
+    );
+  });
+
+  it('baixa o estoque dos itens da comanda aberta', async () => {
+    const adjustments: StockAdjustment[][] = [];
+    const created: NewOrder[] = [];
+    const useCase = new OpenTabUseCase(
+      makeUow(makeRepositories(created, { adjustments })),
+      scout,
+    );
+
+    await useCase.run({
+      sessionUid: 'session-1',
+      customerName: 'Maju',
+      items: [makeItem({ qty: 3, batchId: 'batch-1', addedAt: 10 })],
+    });
+
+    expect(adjustments[0]).toEqual([{ productUid: 'product-1', qty: 3 }]);
+  });
+
+  it('ignora itens sem produto ao baixar o estoque', async () => {
+    const adjustments: StockAdjustment[][] = [];
+    const created: NewOrder[] = [];
+    const useCase = new OpenTabUseCase(
+      makeUow(makeRepositories(created, { adjustments })),
+      scout,
+    );
+
+    await useCase.run({
+      sessionUid: 'session-1',
+      customerName: 'Maju',
+      items: [makeItem({ productUid: undefined })],
+    });
+
+    expect(adjustments[0]).toEqual([]);
+  });
+
+  it('propaga falha ao baixar o estoque', async () => {
+    const created: NewOrder[] = [];
+    const useCase = new OpenTabUseCase(
+      makeUow(makeRepositories(created, { stockFails: true })),
+      scout,
+    );
+
+    const result = await useCase.run({
+      sessionUid: 'session-1',
+      customerName: 'Maju',
+      items: [makeItem()],
+    });
+
+    expect(isRight(result)).toBe(false);
+    if (!isRight(result)) expect(result.left.code).toBe('DB_CONNECTOR');
+    expect(created).toHaveLength(0);
   });
 
   it('usa a sequência automática quando não informam a comanda', async () => {

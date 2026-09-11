@@ -27,7 +27,16 @@ function makeTab(overrides: Partial<Order> = {}): Order {
     uid: 'tab-1',
     businessTypeId: 'scout',
     sessionUid: 'session-1',
-    items: [{ name: 'Refri', salePrice: 5, costPrice: 2, qty: 1 }],
+    items: [
+      {
+        name: 'Refri',
+        salePrice: 5,
+        costPrice: 2,
+        qty: 1,
+        batchId: 'b-1',
+        addedAt: 1000,
+      },
+    ],
     total: 5,
     paymentMethod: null,
     customerName: 'Maju',

@@ -22,6 +22,7 @@ import type {
   CardInvoice,
   PaymentMethod,
 } from '../../domain/finance/payment-method.entity';
+import { backfillOrderItemBatch } from './order-item-batch-backfill';
 
 export type {
   CustomizationGroup,
@@ -308,6 +309,29 @@ export class PDVDatabase extends Dexie {
           .toCollection()
           .modify((config) => {
             if (config.layoutMode == null) config.layoutMode = 'auto';
+          });
+      });
+    this.version(11)
+      .stores({
+        orders:
+          '++id, &uid, sessionUid, status, paymentMethod, createdAt, stage',
+        config: '++id',
+      })
+      .upgrade(async (tx) => {
+        await tx
+          .table('orders')
+          .toCollection()
+          .modify((order) => {
+            backfillOrderItemBatch(order);
+          });
+
+        await tx
+          .table('config')
+          .toCollection()
+          .modify((config) => {
+            if (config.printerBatchIncludesPrevious == null) {
+              config.printerBatchIncludesPrevious = true;
+            }
           });
       });
   }

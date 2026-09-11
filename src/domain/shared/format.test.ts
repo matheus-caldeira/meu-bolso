@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { formatDate, formatDateTime, formatMoney, formatTime } from './format';
+import {
+  formatBatchTime,
+  formatDate,
+  formatDateTime,
+  formatMoney,
+  formatTime,
+} from './format';
 
 describe('format', () => {
   describe('formatMoney', () => {
@@ -42,6 +48,20 @@ describe('format', () => {
       expect(formatDateTime(timestamp)).toBe(
         `${formatDate(timestamp)} ${formatTime(timestamp)}`,
       );
+    });
+  });
+
+  describe('formatBatchTime', () => {
+    it('formata a hora da rodada com dois dígitos', () => {
+      const at = new Date(2026, 8, 9, 19, 2).getTime();
+
+      expect(formatBatchTime(at)).toBe('19h02');
+    });
+
+    it('preserva o zero à esquerda na hora', () => {
+      const at = new Date(2026, 8, 9, 9, 30).getTime();
+
+      expect(formatBatchTime(at)).toBe('09h30');
     });
   });
 });

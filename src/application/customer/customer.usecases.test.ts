@@ -7,6 +7,7 @@ import type { CustomerInput } from '../../domain/customer/customer.rules';
 import { getBusinessType } from '../../domain/business-type/registry';
 import { ConnectorError } from '../../infrastructure/errors';
 import {
+  makeFindCustomerByUid,
   makeListCustomers,
   makeRemoveCustomer,
   makeSaveCustomer,
@@ -29,6 +30,7 @@ function fakeRepo(over: Partial<CustomerRepository> = {}): CustomerRepository {
   return {
     list: vi.fn(async () => right([] as Customer[])),
     findByPhone: vi.fn(async () => right(undefined)),
+    findByUid: vi.fn(async () => right(undefined)),
     create: vi.fn(async (d) => right(customer({ ...d, uid: 'customer-9' }))),
     update: vi.fn(async (uid, d) => right(customer({ ...d, uid }))),
     remove: vi.fn(async () => right(undefined)),
@@ -51,6 +53,16 @@ describe('customer use cases', () => {
     const repo = fakeRepo();
     await makeListCustomers(repo)();
     expect(repo.list).toHaveBeenCalled();
+  });
+
+  it('finds a customer by uid', async () => {
+    const found = customer({ uid: 'customer-7' });
+    const repo = fakeRepo({ findByUid: vi.fn(async () => right(found)) });
+
+    const result = await makeFindCustomerByUid(repo)('customer-7');
+
+    expect(repo.findByUid).toHaveBeenCalledWith('customer-7');
+    expect(isRight(result) && result.right).toBe(found);
   });
 
   it('removes a customer', async () => {

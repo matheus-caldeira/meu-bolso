@@ -155,6 +155,7 @@ function itemSignature(item: OrderItem): string {
     item.costPrice,
     item.observation ?? '',
     customizations,
+    item.batchId,
   ].join('#');
 }
 
@@ -175,6 +176,37 @@ export function mergeOrderItems(
     merged.push({ ...item });
   }
   return merged;
+}
+
+export function stampBatch(
+  items: OrderItem[],
+  batchId: string,
+  addedAt: number,
+): OrderItem[] {
+  return items.map((item) => ({ ...item, batchId, addedAt }));
+}
+
+export interface OrderBatch {
+  batchId: string;
+  addedAt: number;
+  items: OrderItem[];
+}
+
+export function groupItemsByBatch(items: OrderItem[]): OrderBatch[] {
+  const batches = new Map<string, OrderBatch>();
+  for (const item of items) {
+    const batch = batches.get(item.batchId);
+    if (batch) {
+      batch.items.push(item);
+      continue;
+    }
+    batches.set(item.batchId, {
+      batchId: item.batchId,
+      addedAt: item.addedAt,
+      items: [item],
+    });
+  }
+  return [...batches.values()].sort((a, b) => a.addedAt - b.addedAt);
 }
 
 function totalsByProduct(items: OrderItem[]): Map<string, number> {

@@ -33,7 +33,11 @@ export function useTabs(sessionUid: string) {
   const openTab = useCallback(
     async (
       customerName: string,
-      options: { customerUid?: string; ticket?: string } = {},
+      options: {
+        customerUid?: string;
+        ticket?: string;
+        items?: OrderItem[];
+      } = {},
     ): Promise<Order | null> => {
       if (!definition) {
         toast('Tipo de negócio não definido.', 'error');
@@ -44,6 +48,7 @@ export function useTabs(sessionUid: string) {
         customerName,
         customerUid: options.customerUid,
         ticket: options.ticket,
+        items: options.items,
       });
       return fold(
         result,
@@ -61,17 +66,17 @@ export function useTabs(sessionUid: string) {
   );
 
   const addItems = useCallback(
-    async (orderUid: string, items: OrderItem[]) => {
+    async (orderUid: string, items: OrderItem[]): Promise<Order | null> => {
       const result = await container.addItemsToTab({ orderUid, items });
       return fold(
         result,
         (error) => {
           toast(error.message, 'error');
-          return false;
+          return null;
         },
-        () => {
+        (order) => {
           void refresh();
-          return true;
+          return order;
         },
       );
     },

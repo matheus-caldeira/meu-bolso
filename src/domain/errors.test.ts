@@ -8,6 +8,7 @@ import {
   DuplicateBudgetItemError,
   EmptyCartError,
   EmptyMemberSelectionError,
+  EmptyReportSelectionError,
   FamilyMemberInUseError,
   FamilyMemberNotFoundError,
   FinanceCategoryInUseError,
@@ -36,6 +37,8 @@ import {
   RecurrenceNotFoundError,
   RecurrenceOutOfRangeError,
   RequiredCustomizationMissingError,
+  ShareFailedError,
+  ShareUnavailableError,
   TabNotFoundError,
   TicketLimitReachedError,
   UnknownBusinessTypeError,
@@ -91,6 +94,27 @@ describe('domain errors', () => {
     expect(error).toBeInstanceOf(DomainError);
     expect(error.code).toBe('PRINT_FAILED');
     expect(error.message).toContain('imprimir');
+  });
+
+  it('ShareUnavailableError carries its code', () => {
+    const error = new ShareUnavailableError();
+    expect(error).toBeInstanceOf(DomainError);
+    expect(error.code).toBe('SHARE_UNAVAILABLE');
+    expect(error.message).toContain('compartilhar');
+  });
+
+  it('ShareFailedError carries its code', () => {
+    const error = new ShareFailedError();
+    expect(error).toBeInstanceOf(DomainError);
+    expect(error.code).toBe('SHARE_FAILED');
+    expect(error.message).toContain('compartilhar');
+  });
+
+  it('EmptyReportSelectionError carries its code', () => {
+    const error = new EmptyReportSelectionError();
+    expect(error).toBeInstanceOf(DomainError);
+    expect(error.code).toBe('EMPTY_REPORT_SELECTION');
+    expect(error.message).toContain('Selecione');
   });
 });
 

@@ -1,11 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
-import { usePdvController } from './usePdvController';
+import { usePdvController, type FinalizedSale } from './usePdvController';
 import { ToastProvider } from '../molecules/Toast';
 import { left, right } from '../../domain/shared/either';
 import { EmptyCartError } from '../../domain/errors';
 import { getBusinessType } from '../../domain/business-type/registry';
+import type { OrderItem } from '../../domain/order/order.entity';
 import type { Product } from '../../domain/product/product.entity';
 import type { BusinessTypeDefinition } from '../../domain/business-type/registry';
 import type { RegisterOrderInput } from '../../application/order/register-order.usecase';
@@ -117,6 +118,8 @@ describe('usePdvController', () => {
         costPrice: 10,
         qty: 1,
         customizationTotal: 5,
+        batchId: '',
+        addedAt: 0,
       }),
     );
     const cartId = result.current.cart[1].cartId;
@@ -236,6 +239,38 @@ describe('usePdvController', () => {
     );
   });
 
+  it('carimba a mesma rodada em todos os itens ao registrar a venda', async () => {
+    registerOrder.mockResolvedValue(right({ id: 1 }));
+    const { result } = await setup();
+    act(() => result.current.addSimpleToCart(product({ id: 1 })));
+    act(() => result.current.addSimpleToCart(product({ id: 2 })));
+    await act(async () => {
+      await result.current.finalizeSale('now', 'dinheiro');
+    });
+
+    const sent = registerOrder.mock.calls[0][2].items as OrderItem[];
+    expect(sent).toHaveLength(2);
+    expect(sent[0].batchId).toBeTruthy();
+    expect(sent[1].batchId).toBe(sent[0].batchId);
+    expect(sent[0].addedAt).toBeGreaterThan(0);
+    expect(sent[1].addedAt).toBe(sent[0].addedAt);
+  });
+
+  it('devolve o pedido registrado com a rodada carimbada', async () => {
+    const registered = { id: 1, uid: 'order-1' };
+    registerOrder.mockResolvedValue(right(registered));
+    const { result } = await setup();
+    act(() => result.current.addSimpleToCart(product({ id: 1 })));
+
+    let sale: FinalizedSale | null = null;
+    await act(async () => {
+      sale = await result.current.finalizeSale('now', 'dinheiro');
+    });
+
+    const sent = registerOrder.mock.calls[0][2].items as OrderItem[];
+    expect(sale).toEqual({ order: registered, batchId: sent[0].batchId });
+  });
+
   it('não vincula cliente quando o nome foi digitado sem selecionar', async () => {
     registerOrder.mockResolvedValue(right({ id: 1 }));
     const { result } = await setup();
@@ -352,11 +387,11 @@ describe('usePdvController', () => {
     act(() => result.current.addSimpleToCart(product({ id: 1 })));
     act(() => result.current.setCustomerName('Joao'));
 
-    let ok = false;
+    let sale: FinalizedSale | null = null;
     await act(async () => {
-      ok = await result.current.finalizeSale('now', 'pix');
+      sale = await result.current.finalizeSale('now', 'pix');
     });
-    expect(ok).toBe(true);
+    expect(sale).not.toBeNull();
     expect(registerOrder).toHaveBeenCalledWith(
       'tab',
       getBusinessType('tab'),
@@ -432,11 +467,11 @@ describe('usePdvController', () => {
     registerOrder.mockResolvedValue(left(new EmptyCartError()));
     const { result } = await setup();
     act(() => result.current.addSimpleToCart(product({ id: 1 })));
-    let ok = true;
+    let sale: FinalizedSale | null = null;
     await act(async () => {
-      ok = await result.current.finalizeSale('now', 'pix');
+      sale = await result.current.finalizeSale('now', 'pix');
     });
-    expect(ok).toBe(false);
+    expect(sale).toBeNull();
     expect(result.current.cart).toHaveLength(1);
   });
 
@@ -444,11 +479,11 @@ describe('usePdvController', () => {
     registerOrder.mockResolvedValue(left({ message: 'boom' }));
     const { result } = await setup();
     act(() => result.current.addSimpleToCart(product({ id: 1 })));
-    let ok = true;
+    let sale: FinalizedSale | null = null;
     await act(async () => {
-      ok = await result.current.finalizeSale('now', 'pix');
+      sale = await result.current.finalizeSale('now', 'pix');
     });
-    expect(ok).toBe(false);
+    expect(sale).toBeNull();
   });
 
   it('toasts and does not call registerOrder when no business type is selected', async () => {
@@ -472,11 +507,11 @@ describe('usePdvController', () => {
     await waitFor(() => expect(result.current.ordering).toBe('optional'));
     act(() => result.current.addSimpleToCart(product({ id: 1 })));
 
-    let ok = true;
+    let sale: FinalizedSale | null = null;
     await act(async () => {
-      ok = await result.current.finalizeSale('now', 'pix');
+      sale = await result.current.finalizeSale('now', 'pix');
     });
-    expect(ok).toBe(false);
+    expect(sale).toBeNull();
     expect(registerOrder).not.toHaveBeenCalled();
   });
 
@@ -502,11 +537,11 @@ describe('usePdvController', () => {
     await waitFor(() => expect(readConfig).toHaveBeenCalled());
     act(() => result.current.addSimpleToCart(product({ id: 1 })));
 
-    let ok = true;
+    let sale: FinalizedSale | null = null;
     await act(async () => {
-      ok = await result.current.finalizeSale('now', 'pix');
+      sale = await result.current.finalizeSale('now', 'pix');
     });
-    expect(ok).toBe(false);
+    expect(sale).toBeNull();
     expect(registerOrder).not.toHaveBeenCalled();
   });
 
@@ -532,11 +567,11 @@ describe('usePdvController', () => {
     await waitFor(() => expect(result.current.ordering).toBe('none'));
     act(() => result.current.addSimpleToCart(product({ id: 1 })));
 
-    let ok = false;
+    let sale: FinalizedSale | null = null;
     await act(async () => {
-      ok = await result.current.finalizeSale('now', 'pix');
+      sale = await result.current.finalizeSale('now', 'pix');
     });
-    expect(ok).toBe(true);
+    expect(sale).not.toBeNull();
     expect(registerOrder).toHaveBeenCalledWith(
       'quick_sale',
       getBusinessType('quick_sale'),
@@ -566,11 +601,11 @@ describe('usePdvController', () => {
     await waitFor(() => expect(result.current.ordering).toBe('required'));
     act(() => result.current.addSimpleToCart(product({ id: 1 })));
 
-    let ok = false;
+    let sale: FinalizedSale | null = null;
     await act(async () => {
-      ok = await result.current.finalizeSale('now', 'pix');
+      sale = await result.current.finalizeSale('now', 'pix');
     });
-    expect(ok).toBe(true);
+    expect(sale).not.toBeNull();
     expect(registerOrder).toHaveBeenCalledWith(
       'scout',
       getBusinessType('scout'),

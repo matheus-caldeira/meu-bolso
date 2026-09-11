@@ -17,7 +17,15 @@ function makeOrder(partial: Partial<Order>): Order {
     businessTypeId: 'tab',
     sessionUid: 'session-1',
     items: [
-      { productUid: 'p-1', name: 'Refri', salePrice: 5, costPrice: 2, qty: 1 },
+      {
+        productUid: 'p-1',
+        name: 'Refri',
+        salePrice: 5,
+        costPrice: 2,
+        qty: 1,
+        batchId: 'b-1',
+        addedAt: 1000,
+      },
     ],
     total: 30,
     paymentMethod: null,
@@ -46,6 +54,8 @@ const RICH_ORDER = makeOrder({
         { groupName: 'Adicionais', name: 'Bacon', qty: 2, price: 5 },
         { groupName: 'Adicionais', name: 'Queijo', qty: 1, price: 0 },
       ],
+      batchId: 'b-1',
+      addedAt: 1000,
     },
     {
       productUid: 'product-2',
@@ -53,6 +63,8 @@ const RICH_ORDER = makeOrder({
       salePrice: 8,
       costPrice: 2,
       qty: 1,
+      batchId: 'b-1',
+      addedAt: 1000,
     },
   ],
 });
@@ -428,6 +440,8 @@ describe('OrderDetail', () => {
               salePrice: 5,
               costPrice: 2,
               qty: 2,
+              batchId: 'b-1',
+              addedAt: 1000,
             },
           ],
         })}
@@ -514,6 +528,8 @@ describe('OrderDetail', () => {
               salePrice: 5,
               costPrice: 2,
               qty: 1,
+              batchId: 'b-1',
+              addedAt: 1000,
             },
             {
               productUid: 'p-2',
@@ -521,6 +537,8 @@ describe('OrderDetail', () => {
               salePrice: 3,
               costPrice: 1,
               qty: 1,
+              batchId: 'b-1',
+              addedAt: 1000,
             },
           ],
         })}
@@ -545,8 +563,194 @@ describe('OrderDetail', () => {
     );
 
     expect(onSaveItems).toHaveBeenCalledWith([
-      { productUid: 'p-1', name: 'Refri', salePrice: 5, costPrice: 2, qty: 1 },
-      { productUid: 'p-2', name: 'Água', salePrice: 3, costPrice: 1, qty: 2 },
+      {
+        productUid: 'p-1',
+        name: 'Refri',
+        salePrice: 5,
+        costPrice: 2,
+        qty: 1,
+        batchId: 'b-1',
+        addedAt: 1000,
+      },
+      {
+        productUid: 'p-2',
+        name: 'Água',
+        salePrice: 3,
+        costPrice: 1,
+        qty: 2,
+        batchId: 'b-1',
+        addedAt: 1000,
+      },
+    ]);
+  });
+
+  it('agrupa os itens da comanda por horário de lançamento', () => {
+    const order = makeOrder({
+      items: [
+        {
+          name: 'Cachorro',
+          salePrice: 10,
+          costPrice: 4,
+          qty: 2,
+          batchId: 'b-1',
+          addedAt: new Date(2026, 8, 9, 19, 2).getTime(),
+        },
+        {
+          name: 'Refri',
+          salePrice: 5,
+          costPrice: 2,
+          qty: 1,
+          batchId: 'b-2',
+          addedAt: new Date(2026, 8, 9, 20, 15).getTime(),
+        },
+      ],
+    });
+
+    renderDetail(order);
+
+    expect(screen.getByText('19h02')).toBeInTheDocument();
+    expect(screen.getByText('20h15')).toBeInTheDocument();
+  });
+
+  it('não mostra cabeçalho de horário quando há uma só rodada', () => {
+    const order = makeOrder({
+      items: [
+        {
+          name: 'Cachorro',
+          salePrice: 10,
+          costPrice: 4,
+          qty: 2,
+          batchId: 'b-1',
+          addedAt: new Date(2026, 8, 9, 19, 2).getTime(),
+        },
+      ],
+    });
+
+    renderDetail(order);
+
+    expect(screen.queryByText('19h02')).not.toBeInTheDocument();
+  });
+
+  it('altera apenas o item da segunda rodada ao editar quantidade', async () => {
+    const onSaveItems = vi.fn();
+    render(
+      <OrderDetail
+        order={makeOrder({
+          status: 'open',
+          items: [
+            {
+              productUid: 'p-1',
+              name: 'Refri',
+              salePrice: 5,
+              costPrice: 2,
+              qty: 1,
+              batchId: 'b-1',
+              addedAt: new Date(2026, 8, 9, 19, 2).getTime(),
+            },
+            {
+              productUid: 'p-2',
+              name: 'Água',
+              salePrice: 3,
+              costPrice: 1,
+              qty: 1,
+              batchId: 'b-2',
+              addedAt: new Date(2026, 8, 9, 20, 15).getTime(),
+            },
+          ],
+        })}
+        onPrint={vi.fn()}
+        onMarkPaid={vi.fn()}
+        onCancel={vi.fn()}
+        onSaveItems={onSaveItems}
+      />,
+    );
+
+    expect(screen.getByText('19h02')).toBeInTheDocument();
+    expect(screen.getByText('20h15')).toBeInTheDocument();
+
+    await userEvent.click(
+      screen.getAllByRole('button', { name: 'Aumentar' })[1],
+    );
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Salvar alterações' }),
+    );
+
+    expect(onSaveItems).toHaveBeenCalledWith([
+      {
+        productUid: 'p-1',
+        name: 'Refri',
+        salePrice: 5,
+        costPrice: 2,
+        qty: 1,
+        batchId: 'b-1',
+        addedAt: new Date(2026, 8, 9, 19, 2).getTime(),
+      },
+      {
+        productUid: 'p-2',
+        name: 'Água',
+        salePrice: 3,
+        costPrice: 1,
+        qty: 2,
+        batchId: 'b-2',
+        addedAt: new Date(2026, 8, 9, 20, 15).getTime(),
+      },
+    ]);
+  });
+
+  it('remove apenas o item da segunda rodada', async () => {
+    const onSaveItems = vi.fn();
+    render(
+      <OrderDetail
+        order={makeOrder({
+          status: 'open',
+          items: [
+            {
+              productUid: 'p-1',
+              name: 'Refri',
+              salePrice: 5,
+              costPrice: 2,
+              qty: 1,
+              batchId: 'b-1',
+              addedAt: new Date(2026, 8, 9, 19, 2).getTime(),
+            },
+            {
+              productUid: 'p-2',
+              name: 'Água',
+              salePrice: 3,
+              costPrice: 1,
+              qty: 1,
+              batchId: 'b-2',
+              addedAt: new Date(2026, 8, 9, 20, 15).getTime(),
+            },
+          ],
+        })}
+        onPrint={vi.fn()}
+        onMarkPaid={vi.fn()}
+        onCancel={vi.fn()}
+        onSaveItems={onSaveItems}
+      />,
+    );
+
+    await userEvent.click(
+      screen.getAllByRole('button', { name: 'Diminuir' })[1],
+    );
+    expect(screen.getByText('Remover Água da comanda?')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Remover' }));
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Salvar alterações' }),
+    );
+
+    expect(onSaveItems).toHaveBeenCalledWith([
+      {
+        productUid: 'p-1',
+        name: 'Refri',
+        salePrice: 5,
+        costPrice: 2,
+        qty: 1,
+        batchId: 'b-1',
+        addedAt: new Date(2026, 8, 9, 19, 2).getTime(),
+      },
     ]);
   });
 

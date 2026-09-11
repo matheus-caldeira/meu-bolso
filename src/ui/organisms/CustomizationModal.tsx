@@ -114,6 +114,8 @@ export function CustomizationModal({
       observation: observation.trim() || undefined,
       customizations: customizations.length > 0 ? customizations : undefined,
       customizationTotal: extra > 0 ? extra : undefined,
+      batchId: '',
+      addedAt: 0,
     });
   }
 

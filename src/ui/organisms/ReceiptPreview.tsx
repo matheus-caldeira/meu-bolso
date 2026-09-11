@@ -6,14 +6,15 @@ import type { Receipt } from '../../domain/printing/receipt.entity';
 interface ReceiptPreviewProps {
   receipt: Receipt | null;
   paperWidth: PaperWidth;
+  visible?: boolean;
 }
 
 export const ReceiptPreview = forwardRef<HTMLDivElement, ReceiptPreviewProps>(
-  function ReceiptPreview({ receipt, paperWidth }, ref) {
+  function ReceiptPreview({ receipt, paperWidth, visible = false }, ref) {
     if (!receipt) return null;
 
     return (
-      <div className="hidden">
+      <div className={visible ? 'flex justify-center' : 'hidden'}>
         <div
           ref={ref}
           data-receipt=""
@@ -35,19 +36,38 @@ export const ReceiptPreview = forwardRef<HTMLDivElement, ReceiptPreviewProps>(
             <p className="text-center">{receipt.customerName}</p>
           )}
 
+          {receipt.customerDetails && (
+            <p className="text-center">{receipt.customerDetails}</p>
+          )}
+
           <hr className="my-1 border-t border-dashed border-black" />
 
-          {receipt.lines.map((line, index) => (
-            <div
-              key={`${line.label}-${index}`}
-              className="flex justify-between gap-2"
-            >
-              <span className={line.emphasis ? 'font-bold' : undefined}>
-                {line.qty ? `${line.qty}x ${line.label}` : line.label}
-              </span>
-              {line.value && <span className="tabular-nums">{line.value}</span>}
-            </div>
-          ))}
+          {receipt.lines.map((line, index) => {
+            if (line.kind === 'blank') {
+              return <div key={`blank-${index}`} className="h-3" />;
+            }
+            if (line.kind === 'divider') {
+              return (
+                <hr
+                  key={`divider-${index}`}
+                  className="my-1 border-t border-dashed border-black"
+                />
+              );
+            }
+            return (
+              <div
+                key={`${line.label}-${index}`}
+                className="flex justify-between gap-2"
+              >
+                <span className={line.emphasis ? 'font-bold' : undefined}>
+                  {line.qty ? `${line.qty}x ${line.label}` : line.label}
+                </span>
+                {line.value && (
+                  <span className="tabular-nums">{line.value}</span>
+                )}
+              </div>
+            );
+          })}
 
           {receipt.total !== undefined && (
             <>

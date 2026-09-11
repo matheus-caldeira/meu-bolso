@@ -22,6 +22,7 @@ const resetTicketSequence = vi.fn();
 const exportBackup = vi.fn();
 const exportEntity = vi.fn();
 const importBackup = vi.fn();
+const importAllBackup = vi.fn();
 const hasData = vi.fn();
 const loadDemo = vi.fn();
 const wipeData = vi.fn();
@@ -39,6 +40,8 @@ vi.mock('../../app/container', () => ({
     exportEntity: (entity: string, format: string) =>
       exportEntity(entity, format),
     importBackup: (entity: string, file: File) => importBackup(entity, file),
+    importAllBackup: (files: File[], mode: string) =>
+      importAllBackup(files, mode),
     hasData: () => hasData(),
     loadDemo: (now: number) => loadDemo(now),
     wipeData: () => wipeData(),
@@ -90,6 +93,7 @@ const CONFIG: BusinessConfig = {
   printerPaperWidth: 80,
   printerCodepage: 'cp860',
   printerAutoPrintOnClose: false,
+  printerBatchIncludesPrevious: true,
   layoutMode: 'auto',
 };
 
@@ -110,6 +114,7 @@ describe('SettingsPage', () => {
     exportBackup.mockReset();
     exportEntity.mockReset();
     importBackup.mockReset();
+    importAllBackup.mockReset();
     hasData.mockReset();
     loadDemo.mockReset();
     wipeData.mockReset();
@@ -602,6 +607,125 @@ describe('SettingsPage', () => {
     );
   });
 
+  it('abre o modal de importar tudo com os arquivos escolhidos', async () => {
+    renderPage();
+    await waitFor(() =>
+      expect(screen.getByLabelText('Arquivos do backup')).toBeInTheDocument(),
+    );
+    await userEvent.upload(screen.getByLabelText('Arquivos do backup'), [
+      new File(['{}'], 'pdv-backup.json', { type: 'application/json' }),
+    ]);
+
+    const dialog = screen.getByRole('dialog', { name: 'Importar tudo' });
+    expect(within(dialog).getByText('pdv-backup.json')).toBeInTheDocument();
+  });
+
+  it('importa tudo substituindo os dados e recarrega ao concluir', async () => {
+    const reloadSpy = mockReload();
+    importAllBackup.mockResolvedValue(
+      right({ imported: { products: 2 }, skipped: [] }),
+    );
+    renderPage();
+    await waitFor(() =>
+      expect(screen.getByLabelText('Arquivos do backup')).toBeInTheDocument(),
+    );
+    await userEvent.upload(screen.getByLabelText('Arquivos do backup'), [
+      new File(['{}'], 'pdv-backup.json', { type: 'application/json' }),
+    ]);
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Substituir tudo' }),
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Concluir' }),
+      ).toBeInTheDocument(),
+    );
+    const dialog = screen.getByRole('dialog', { name: 'Importar tudo' });
+    expect(within(dialog).getByText('Produtos')).toBeInTheDocument();
+    expect(within(dialog).getByText('2')).toBeInTheDocument();
+    expect(importAllBackup.mock.calls[0][1]).toBe('replace');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Concluir' }));
+    await waitFor(() => expect(reloadSpy).toHaveBeenCalled());
+  });
+
+  it('importa tudo somando ao que existe', async () => {
+    importAllBackup.mockResolvedValue(
+      right({ imported: { customers: 1 }, skipped: ['planilha.csv'] }),
+    );
+    renderPage();
+    await waitFor(() =>
+      expect(screen.getByLabelText('Arquivos do backup')).toBeInTheDocument(),
+    );
+    await userEvent.upload(screen.getByLabelText('Arquivos do backup'), [
+      new File(['a,b\n1,2'], 'planilha.csv', { type: 'text/csv' }),
+    ]);
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Somar ao que existe' }),
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.getByText('Não reconhecemos estes arquivos:'),
+      ).toBeInTheDocument(),
+    );
+    expect(importAllBackup.mock.calls[0][1]).toBe('merge');
+  });
+
+  it('mantém o modal aberto e avisa quando a importação falha', async () => {
+    importAllBackup.mockResolvedValue(left(new FakeError('falha ao importar')));
+    renderPage();
+    await waitFor(() =>
+      expect(screen.getByLabelText('Arquivos do backup')).toBeInTheDocument(),
+    );
+    await userEvent.upload(screen.getByLabelText('Arquivos do backup'), [
+      new File(['{}'], 'pdv-backup.json', { type: 'application/json' }),
+    ]);
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Substituir tudo' }),
+    );
+
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent('falha ao importar'),
+    );
+    expect(
+      screen.getByRole('button', { name: 'Substituir tudo' }),
+    ).toBeInTheDocument();
+  });
+
+  it('fecha o modal ao cancelar sem importar', async () => {
+    const reloadSpy = mockReload();
+    renderPage();
+    await waitFor(() =>
+      expect(screen.getByLabelText('Arquivos do backup')).toBeInTheDocument(),
+    );
+    await userEvent.upload(screen.getByLabelText('Arquivos do backup'), [
+      new File(['{}'], 'pdv-backup.json', { type: 'application/json' }),
+    ]);
+    await userEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+
+    expect(
+      screen.queryByRole('dialog', { name: 'Importar tudo' }),
+    ).not.toBeInTheDocument();
+    expect(importAllBackup).not.toHaveBeenCalled();
+    expect(reloadSpy).not.toHaveBeenCalled();
+  });
+
+  it('não abre o modal quando a seleção fica vazia', async () => {
+    renderPage();
+    await waitFor(() =>
+      expect(screen.getByLabelText('Arquivos do backup')).toBeInTheDocument(),
+    );
+    fireEvent.change(screen.getByLabelText('Arquivos do backup'), {
+      target: { files: [] },
+    });
+
+    expect(
+      screen.queryByRole('dialog', { name: 'Importar tudo' }),
+    ).not.toBeInTheDocument();
+  });
+
   it('does not offer a network connection option', async () => {
     renderPage();
     await waitFor(() =>
@@ -643,11 +767,33 @@ describe('SettingsPage', () => {
         printerPaperWidth: 58,
         printerCodepage: 'cp860',
         printerAutoPrintOnClose: true,
+        printerBatchIncludesPrevious: true,
       }),
     );
     await waitFor(() =>
       expect(screen.getByRole('status')).toHaveTextContent(
         'Configurações de impressão salvas',
+      ),
+    );
+  });
+
+  it('permite desligar o histórico no papel da comanda', async () => {
+    renderPage();
+    await waitFor(() =>
+      expect(screen.getByLabelText('Tipo de Conexão')).toBeInTheDocument(),
+    );
+
+    await userEvent.selectOptions(
+      screen.getByLabelText('Incluir itens anteriores no papel da comanda'),
+      '0',
+    );
+    await userEvent.click(
+      screen.getAllByRole('button', { name: 'Salvar' }).at(-1)!,
+    );
+
+    await waitFor(() =>
+      expect(savePrinterConfig).toHaveBeenCalledWith(
+        expect.objectContaining({ printerBatchIncludesPrevious: false }),
       ),
     );
   });
