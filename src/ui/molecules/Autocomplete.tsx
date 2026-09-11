@@ -1,4 +1,12 @@
-import { useId, useState, type FocusEvent, type KeyboardEvent } from 'react';
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type FocusEvent,
+  type KeyboardEvent,
+} from 'react';
+import { Search } from 'lucide-react';
 import { cn } from '../lib/cn';
 
 export interface AutocompleteOption {
@@ -12,8 +20,10 @@ interface AutocompleteProps {
   value: string;
   options: AutocompleteOption[];
   placeholder?: string;
+  searchLabel?: string;
   onChange: (value: string) => void;
   onSelect: (option: AutocompleteOption) => void;
+  onSearch?: () => void;
 }
 
 export function Autocomplete({
@@ -21,10 +31,13 @@ export function Autocomplete({
   value,
   options,
   placeholder,
+  searchLabel = `Buscar ${label}`,
   onChange,
   onSelect,
+  onSearch,
 }: AutocompleteProps) {
   const inputId = useId();
+  const listRef = useRef<HTMLUListElement>(null);
   const [dismissed, setDismissed] = useState(false);
   const [focused, setFocused] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
@@ -36,6 +49,12 @@ export function Autocomplete({
   }
 
   const expanded = focused && options.length > 0 && !dismissed;
+
+  useEffect(() => {
+    if (activeIndex < 0) return;
+    const active = listRef.current?.children[activeIndex];
+    active?.querySelector('button')?.scrollIntoView?.({ block: 'nearest' });
+  }, [activeIndex]);
 
   function handleBlur(event: FocusEvent<HTMLDivElement>) {
     if (event.currentTarget.contains(event.relatedTarget as Node | null)) {
@@ -93,23 +112,39 @@ export function Autocomplete({
       >
         {label}
       </label>
-      <input
-        id={inputId}
-        role="combobox"
-        aria-expanded={expanded}
-        aria-autocomplete="list"
-        autoComplete="off"
-        placeholder={placeholder}
-        className="min-h-[38px] w-full rounded-sm border border-border-emphasis bg-surface-inset px-3 py-2 text-sm text-ink-primary outline-none focus:border-accent"
-        value={value}
-        onChange={(event) => handleChange(event.target.value)}
-        onKeyDown={handleKeyDown}
-      />
+      <div className="relative">
+        <input
+          id={inputId}
+          role="combobox"
+          aria-expanded={expanded}
+          aria-autocomplete="list"
+          autoComplete="off"
+          placeholder={placeholder}
+          className={cn(
+            'min-h-[38px] w-full rounded-sm border border-border-emphasis bg-surface-inset px-3 py-2 text-sm text-ink-primary outline-none focus:border-accent',
+            onSearch && 'pr-12',
+          )}
+          value={value}
+          onChange={(event) => handleChange(event.target.value)}
+          onKeyDown={handleKeyDown}
+        />
+        {onSearch && (
+          <button
+            type="button"
+            aria-label={searchLabel}
+            className="absolute inset-y-0 right-0 flex h-11 w-11 cursor-pointer items-center justify-center self-center text-ink-tertiary hover:text-accent"
+            onClick={onSearch}
+          >
+            <Search size={18} />
+          </button>
+        )}
+      </div>
       {expanded && (
         <ul
+          ref={listRef}
           role="listbox"
           aria-label={`Opções para ${label}`}
-          className="absolute left-0 right-0 top-full z-20 mt-0.5 overflow-hidden rounded-md border border-border bg-surface-2 shadow-lg"
+          className="absolute left-0 right-0 top-full z-20 mt-0.5 max-h-56 overflow-y-auto rounded-md border border-border bg-surface-2 shadow-lg"
         >
           {options.map((option, index) => (
             <li key={option.value} role="none">

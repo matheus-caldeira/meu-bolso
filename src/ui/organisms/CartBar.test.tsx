@@ -143,13 +143,144 @@ describe('CartBar', () => {
 
     const action = screen.getByRole('button', { name: 'Ações da venda' });
     expect(action).toBeEnabled();
-    expect(action.className).toContain('min-h-14');
-    expect(action.className).toContain('w-full');
     expect(
       screen.queryByRole('button', { name: 'Finalizar venda' }),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: 'Abrir comanda' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('põe o campo de cliente e as ações na mesma linha', () => {
+    render(<CartBar {...baseProps()} cart={[item]} total={15} />);
+
+    const action = screen.getByRole('button', { name: 'Ações da venda' });
+    const field = screen.getByRole('combobox', { name: 'Cliente' });
+    const row = action.parentElement as HTMLElement;
+
+    expect(row.className).toContain('flex');
+    expect(row).toContainElement(field);
+  });
+
+  it('mantém a ação compacta e com alvo de toque confortável', () => {
+    render(<CartBar {...baseProps()} cart={[item]} total={15} />);
+
+    const action = screen.getByRole('button', { name: 'Ações da venda' });
+    expect(action.className).toContain('min-h-11');
+    expect(action.className).toContain('w-[100px]');
+    expect(action.className).not.toContain('w-full');
+  });
+
+  it('abre o modal de busca pela lupa do campo de cliente', async () => {
+    render(<CartBar {...baseProps()} />);
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Buscar cliente na lista' }),
+    );
+
+    expect(
+      screen.getByRole('dialog', { name: 'Buscar cliente' }),
+    ).toBeInTheDocument();
+  });
+
+  it('lista todos os clientes no modal de busca', async () => {
+    const customer: Customer = {
+      uid: 'customer-1',
+      name: 'Maju',
+      phone: '99999',
+      addresses: [],
+      extra: {},
+      createdAt: 1,
+      updatedAt: 1,
+    };
+    render(<CartBar {...baseProps()} customerSuggestions={[customer]} />);
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Buscar cliente na lista' }),
+    );
+
+    const dialog = screen.getByRole('dialog', { name: 'Buscar cliente' });
+    const list = within(dialog).getByRole('list', {
+      name: 'Clientes encontrados',
+    });
+    expect(list.className).toContain('overflow-y-auto');
+    expect(within(list).getByText('Maju')).toBeInTheDocument();
+    expect(within(list).getByText('99999')).toBeInTheDocument();
+  });
+
+  it('vincula o cliente escolhido no modal de busca', async () => {
+    const props = baseProps();
+    const customer: Customer = {
+      uid: 'customer-1',
+      name: 'Maju',
+      addresses: [],
+      extra: {},
+      createdAt: 1,
+      updatedAt: 1,
+    };
+    render(<CartBar {...props} customerSuggestions={[customer]} />);
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Buscar cliente na lista' }),
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Maju' }));
+
+    expect(props.onSelectCustomer).toHaveBeenCalledWith(customer);
+    expect(
+      screen.queryByRole('dialog', { name: 'Buscar cliente' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('filtra a lista digitando no campo do modal de busca', async () => {
+    const props = baseProps();
+    render(<CartBar {...props} />);
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Buscar cliente na lista' }),
+    );
+    await userEvent.type(screen.getByLabelText('Nome do cliente'), 'M');
+
+    expect(props.onCustomerNameChange).toHaveBeenCalledWith('M');
+  });
+
+  it('oferece a comanda quando o tipo de pedido não é informado', async () => {
+    const props = baseProps();
+    render(<CartBar {...props} ordering={undefined} />);
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Ações da venda' }),
+    );
+
+    expect(
+      screen.getByRole('button', { name: 'Abrir comanda' }),
+    ).toBeInTheDocument();
+  });
+
+  it('fecha o modal de busca pelo Escape', async () => {
+    render(<CartBar {...baseProps()} />);
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Buscar cliente na lista' }),
+    );
+    expect(
+      screen.getByRole('dialog', { name: 'Buscar cliente' }),
+    ).toBeInTheDocument();
+
+    await userEvent.keyboard('{Escape}');
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('avisa quando a busca não encontra ninguém', async () => {
+    render(<CartBar {...baseProps()} customerName="Zzz" />);
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Buscar cliente na lista' }),
+    );
+
+    expect(screen.getByText('Nenhum cliente encontrado.')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('list', { name: 'Clientes encontrados' }),
     ).not.toBeInTheDocument();
   });
 
