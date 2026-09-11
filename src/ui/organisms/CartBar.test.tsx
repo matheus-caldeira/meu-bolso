@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -554,6 +555,93 @@ describe('CartBar', () => {
     const ticket = within(dialog).getByText('nº 0012');
     expect(ticket.className).toContain('font-mono');
     expect(ticket.className).toContain('tabular-nums');
+  });
+
+  it('sinaliza o cliente vinculado ao cadastro', () => {
+    const customer: Customer = {
+      uid: 'customer-1',
+      name: 'Maju',
+      addresses: [],
+      extra: {},
+      createdAt: 1,
+      updatedAt: 1,
+    };
+    render(
+      <CartBar
+        {...baseProps()}
+        customerName="Maju"
+        matchedCustomer={customer}
+      />,
+    );
+
+    expect(
+      screen.getByText('Cliente vinculado ao cadastro'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('combobox', { name: 'Cliente' }).className,
+    ).toContain('border-success');
+  });
+
+  it('não sinaliza nada quando o nome foi digitado sem vínculo', () => {
+    render(<CartBar {...baseProps()} customerName="Fulano" />);
+
+    expect(
+      screen.queryByText('Cliente vinculado ao cadastro'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('acende o sinal ao escolher da lista e apaga ao editar o nome', async () => {
+    const customer: Customer = {
+      uid: 'customer-1',
+      name: 'Maju',
+      addresses: [],
+      extra: {},
+      createdAt: 1,
+      updatedAt: 1,
+    };
+
+    function Host() {
+      const [customerName, setCustomerName] = useState('Ma');
+      const [matched, setMatched] = useState<Customer | null>(null);
+      return (
+        <CartBar
+          {...baseProps()}
+          customerName={customerName}
+          customerSuggestions={[customer]}
+          matchedCustomer={matched}
+          onCustomerNameChange={(value) => {
+            setCustomerName(value);
+            setMatched(null);
+          }}
+          onSelectCustomer={(picked) => {
+            setCustomerName(picked.name);
+            setMatched(picked);
+          }}
+        />
+      );
+    }
+
+    render(<Host />);
+
+    expect(
+      screen.queryByText('Cliente vinculado ao cadastro'),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('combobox', { name: 'Cliente' }));
+    await userEvent.click(screen.getByRole('option', { name: /Maju/ }));
+
+    expect(
+      screen.getByText('Cliente vinculado ao cadastro'),
+    ).toBeInTheDocument();
+
+    await userEvent.type(
+      screen.getByRole('combobox', { name: 'Cliente' }),
+      'x',
+    );
+
+    expect(
+      screen.queryByText('Cliente vinculado ao cadastro'),
+    ).not.toBeInTheDocument();
   });
 
   it('fecha o modal de ações pelo Escape', async () => {

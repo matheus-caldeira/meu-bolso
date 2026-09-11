@@ -260,4 +260,30 @@ describe('Cart', () => {
       screen.queryByRole('button', { name: 'Nova comanda' }),
     ).not.toBeInTheDocument();
   });
+
+  it('sinaliza o cliente vinculado ao cadastro', () => {
+    const customer: Customer = {
+      uid: 'customer-1',
+      name: 'Maju',
+      addresses: [],
+      extra: {},
+      createdAt: 1,
+      updatedAt: 1,
+    };
+    render(
+      <Cart {...baseProps()} customerName="Maju" matchedCustomer={customer} />,
+    );
+
+    expect(
+      screen.getByText('Cliente vinculado ao cadastro'),
+    ).toBeInTheDocument();
+  });
+
+  it('não sinaliza vínculo com o nome apenas digitado', () => {
+    render(<Cart {...baseProps()} customerName="Fulano" />);
+
+    expect(
+      screen.queryByText('Cliente vinculado ao cadastro'),
+    ).not.toBeInTheDocument();
+  });
 });

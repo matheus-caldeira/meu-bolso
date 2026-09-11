@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -335,6 +336,123 @@ describe('Autocomplete', () => {
     expect(
       screen.getByRole('button', { name: 'Buscar cliente na lista' }),
     ).toBeInTheDocument();
+  });
+
+  it('não sinaliza vínculo quando a prop não é passada', () => {
+    render(
+      <Autocomplete
+        label="Cliente"
+        value="Maju"
+        options={options}
+        onChange={vi.fn()}
+        onSelect={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.queryByText('Cliente vinculado ao cadastro'),
+    ).not.toBeInTheDocument();
+    const input = screen.getByLabelText('Cliente');
+    expect(input.className).toContain('border-border-emphasis');
+    expect(input.className).not.toContain('border-success');
+  });
+
+  it('sinaliza o vínculo com ícone, cor e texto acessível', () => {
+    render(
+      <Autocomplete
+        label="Cliente"
+        value="Maju"
+        options={options}
+        selected
+        onChange={vi.fn()}
+        onSelect={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByText('Cliente vinculado ao cadastro'),
+    ).toBeInTheDocument();
+    const input = screen.getByLabelText('Cliente');
+    expect(input.className).toContain('border-success');
+    expect(input.className).not.toContain('border-border-emphasis');
+    expect(input.className).toContain('pr-9');
+  });
+
+  it('aceita um texto acessível próprio para o vínculo', () => {
+    render(
+      <Autocomplete
+        label="Comanda"
+        value="0012"
+        options={options}
+        selected
+        selectedLabel="Comanda encontrada"
+        onChange={vi.fn()}
+        onSelect={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText('Comanda encontrada')).toBeInTheDocument();
+  });
+
+  it('afasta o sinal da lupa quando as duas convivem', () => {
+    render(
+      <Autocomplete
+        label="Cliente"
+        value="Maju"
+        options={options}
+        selected
+        onChange={vi.fn()}
+        onSelect={vi.fn()}
+        onSearch={vi.fn()}
+      />,
+    );
+
+    const input = screen.getByLabelText('Cliente');
+    expect(input.className).toContain('pr-18');
+
+    const search = screen.getByRole('button', { name: 'Buscar Cliente' });
+    expect(search.className).toContain('h-11');
+    expect(search.className).toContain('w-11');
+
+    const mark = screen.getByText('Cliente vinculado ao cadastro')
+      .parentElement as HTMLElement;
+    expect(mark.className).toContain('right-11');
+    expect(mark.className).toContain('pointer-events-none');
+  });
+
+  it('esconde o sinal assim que o texto é editado', async () => {
+    function Host() {
+      const [value, setValue] = useState('Maju');
+      const [selected, setSelected] = useState(true);
+      return (
+        <Autocomplete
+          label="Cliente"
+          value={value}
+          options={options}
+          selected={selected}
+          onChange={(next) => {
+            setValue(next);
+            setSelected(false);
+          }}
+          onSelect={(option) => {
+            setValue(option.label);
+            setSelected(true);
+          }}
+        />
+      );
+    }
+
+    render(<Host />);
+
+    expect(
+      screen.getByText('Cliente vinculado ao cadastro'),
+    ).toBeInTheDocument();
+
+    await userEvent.type(screen.getByLabelText('Cliente'), 'x');
+
+    expect(
+      screen.queryByText('Cliente vinculado ao cadastro'),
+    ).not.toBeInTheDocument();
   });
 
   it('mostra a dica da opção', async () => {

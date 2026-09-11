@@ -24,6 +24,7 @@ interface CartBarProps {
   onCustomerNameChange: (value: string) => void;
   customerSuggestions: Customer[];
   onSelectCustomer: (customer: Customer) => void;
+  matchedCustomer?: Customer | null;
   ordering?: BusinessTypeRules['ordering'];
   selectedTab?: Order | null;
   onExpand: () => void;
@@ -40,6 +41,7 @@ export function CartBar({
   onCustomerNameChange,
   customerSuggestions,
   onSelectCustomer,
+  matchedCustomer = null,
   ordering = 'optional',
   selectedTab,
   onExpand,
@@ -118,6 +120,8 @@ export function CartBar({
             placeholder="Nome do cliente"
             value={customerName}
             searchLabel="Buscar cliente na lista"
+            selected={Boolean(matchedCustomer)}
+            selectedLabel="Cliente vinculado ao cadastro"
             options={suggestionOptions}
             onChange={onCustomerNameChange}
             onSelect={(option) => pickSuggestion(option.value)}

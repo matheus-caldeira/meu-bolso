@@ -44,6 +44,7 @@ export function Cart({
   address,
   onAddressChange,
   showAddress,
+  matchedCustomer,
   ordering = 'optional',
   onUpdateQty,
   onRemoveItem,
@@ -70,6 +71,8 @@ export function Cart({
               label="Cliente"
               placeholder="Nome, telefone ou responsável"
               value={customerName}
+              selected={Boolean(matchedCustomer)}
+              selectedLabel="Cliente vinculado ao cadastro"
               options={customerSuggestions.map((entry) => ({
                 value: entry.uid,
                 label: customerSuggestionLabel(entry),

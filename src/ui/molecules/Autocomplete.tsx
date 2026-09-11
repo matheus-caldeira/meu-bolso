@@ -6,7 +6,7 @@ import {
   type FocusEvent,
   type KeyboardEvent,
 } from 'react';
-import { Search } from 'lucide-react';
+import { Check, Search } from 'lucide-react';
 import { cn } from '../lib/cn';
 
 export interface AutocompleteOption {
@@ -21,6 +21,8 @@ interface AutocompleteProps {
   options: AutocompleteOption[];
   placeholder?: string;
   searchLabel?: string;
+  selected?: boolean;
+  selectedLabel?: string;
   onChange: (value: string) => void;
   onSelect: (option: AutocompleteOption) => void;
   onSearch?: () => void;
@@ -32,6 +34,8 @@ export function Autocomplete({
   options,
   placeholder,
   searchLabel = `Buscar ${label}`,
+  selected = false,
+  selectedLabel = `${label} vinculado ao cadastro`,
   onChange,
   onSelect,
   onSearch,
@@ -121,13 +125,27 @@ export function Autocomplete({
           autoComplete="off"
           placeholder={placeholder}
           className={cn(
-            'min-h-[38px] w-full rounded-sm border border-border-emphasis bg-surface-inset px-3 py-2 text-sm text-ink-primary outline-none focus:border-accent',
+            'min-h-[38px] w-full rounded-sm border bg-surface-inset px-3 py-2 text-sm text-ink-primary outline-none focus:border-accent',
+            selected ? 'border-success' : 'border-border-emphasis',
             onSearch && 'pr-12',
+            selected && onSearch && 'pr-18',
+            selected && !onSearch && 'pr-9',
           )}
           value={value}
           onChange={(event) => handleChange(event.target.value)}
           onKeyDown={handleKeyDown}
         />
+        {selected && (
+          <span
+            className={cn(
+              'pointer-events-none absolute inset-y-0 flex items-center text-success',
+              onSearch ? 'right-11' : 'right-2',
+            )}
+          >
+            <Check size={18} aria-hidden="true" />
+            <span className="sr-only">{selectedLabel}</span>
+          </span>
+        )}
         {onSearch && (
           <button
             type="button"

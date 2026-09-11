@@ -213,6 +213,7 @@ function PdvSession({ sessionUid }: { sessionUid: string }) {
             onCustomerNameChange={controller.onCustomerNameChange}
             customerSuggestions={controller.customerSuggestions}
             onSelectCustomer={handleSelectCustomer}
+            matchedCustomer={controller.matchedCustomer}
             onExpand={() => setCartSheetOpen(true)}
             onOpenTab={handleTabAction}
             onFinalize={handleRequestFinalize}
