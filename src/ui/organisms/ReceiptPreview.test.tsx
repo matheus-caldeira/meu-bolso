@@ -109,4 +109,55 @@ describe('ReceiptPreview', () => {
 
     expect(root?.parentElement).not.toHaveClass('hidden');
   });
+
+  it('mostra os dados do cliente vinculado', () => {
+    render(
+      <ReceiptPreview
+        receipt={{ ...receipt, customerDetails: 'Lobinho, Maria Silva' }}
+        paperWidth={80}
+        visible
+      />,
+    );
+
+    expect(screen.getByText('Lobinho, Maria Silva')).toBeInTheDocument();
+  });
+
+  it('desenha a linha divisória entre as seções', () => {
+    const { container } = render(
+      <ReceiptPreview
+        receipt={{
+          ...receipt,
+          lines: [
+            { label: 'NOVOS PRODUTOS', emphasis: true },
+            { label: '', kind: 'blank' },
+            { label: '', kind: 'divider' },
+            { label: 'HISTORICO', emphasis: true },
+          ],
+        }}
+        paperWidth={80}
+        visible
+      />,
+    );
+
+    expect(container.querySelectorAll('hr')).toHaveLength(3);
+  });
+
+  it('não imprime rótulo nas linhas de espaço e divisória', () => {
+    render(
+      <ReceiptPreview
+        receipt={{
+          ...receipt,
+          lines: [
+            { label: 'separador', kind: 'blank' },
+            { label: 'traco', kind: 'divider' },
+          ],
+        }}
+        paperWidth={80}
+        visible
+      />,
+    );
+
+    expect(screen.queryByText('separador')).not.toBeInTheDocument();
+    expect(screen.queryByText('traco')).not.toBeInTheDocument();
+  });
 });
