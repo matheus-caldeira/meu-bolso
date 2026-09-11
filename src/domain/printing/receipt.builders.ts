@@ -80,6 +80,8 @@ export function buildBatchReceipt(
     ? [
         { label: 'NOVOS PRODUTOS', emphasis: true },
         ...batchLines(current),
+        { label: '', kind: 'blank' },
+        { label: '', kind: 'divider' },
         { label: 'HISTORICO', emphasis: true },
         ...batchLines(previous),
       ]

@@ -3,6 +3,7 @@ export interface ReceiptLine {
   value?: string;
   qty?: number;
   emphasis?: boolean;
+  kind?: 'divider' | 'blank';
 }
 
 export interface Receipt {

@@ -235,4 +235,39 @@ describe('buildReceiptLayout', () => {
       bold: false,
     });
   });
+
+  it('preenche a linha divisória com a largura do papel', () => {
+    const layout = buildReceiptLayout(
+      { ...receipt, lines: [{ label: '', kind: 'divider' }] },
+      58,
+    );
+
+    expect(layout).toContainEqual({
+      text: '-'.repeat(32),
+      align: 'left',
+      bold: false,
+    });
+  });
+
+  it('usa a largura maior do papel de 80mm na divisória', () => {
+    const layout = buildReceiptLayout(
+      { ...receipt, lines: [{ label: '', kind: 'divider' }] },
+      80,
+    );
+
+    expect(layout).toContainEqual({
+      text: '-'.repeat(48),
+      align: 'left',
+      bold: false,
+    });
+  });
+
+  it('imprime a linha em branco sem conteúdo', () => {
+    const layout = buildReceiptLayout(
+      { ...receipt, lines: [{ label: '', kind: 'blank' }] },
+      58,
+    );
+
+    expect(layout).toContainEqual({ text: '', align: 'left', bold: false });
+  });
 });

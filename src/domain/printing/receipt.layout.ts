@@ -61,6 +61,14 @@ export function buildReceiptLayout(
   }
 
   for (const line of receipt.lines) {
+    if (line.kind === 'blank') {
+      layout.push({ text: '', align: 'left', bold: false });
+      continue;
+    }
+    if (line.kind === 'divider') {
+      layout.push({ text: '-'.repeat(width), align: 'left', bold: false });
+      continue;
+    }
     const label = line.qty ? `${line.qty}x ${line.label}` : line.label;
     layout.push({
       text: line.value ? padLine(label, line.value, width) : label,

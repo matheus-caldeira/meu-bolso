@@ -380,6 +380,8 @@ describe('buildBatchReceipt', () => {
       { label: 'NOVOS PRODUTOS', emphasis: true },
       { label: '20h15' },
       { label: 'Refri', qty: 1, value: 'R$ 5,00' },
+      { label: '', kind: 'blank' },
+      { label: '', kind: 'divider' },
       { label: 'HISTORICO', emphasis: true },
       { label: '19h02' },
       { label: 'Cachorro', qty: 2, value: 'R$ 20,00' },
