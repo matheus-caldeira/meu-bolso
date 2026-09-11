@@ -659,6 +659,27 @@ describe('DexieBackupRepository — tabelas finance', () => {
     expect(stored[0].name).toBe('Escoteiro');
   });
 
+  it('importAll considera os pedidos que já estavam no aparelho ao somar', async () => {
+    await db.config.put({
+      ...businessConfig('Do aparelho'),
+      ticketCounter: 90,
+    });
+    await db.orders.add(importedOrder('local-89', '0089') as never);
+    const backup = {
+      config: [{ ...businessConfig('Escoteiro'), ticketCounter: 10 }],
+      orders: [importedOrder('ord-9', '0009')],
+    };
+
+    const result = await repo.importAll(
+      [new File([JSON.stringify(backup)], 'pdv-backup.json')],
+      'merge',
+    );
+
+    expect(isRight(result)).toBe(true);
+    const stored = await db.config.toArray();
+    expect(stored[0].ticketCounter).toBe(90);
+  });
+
   it('importAll protege o contador do aparelho quando o backup não traz config', async () => {
     await db.config.put({ ...businessConfig('Do aparelho'), ticketCounter: 3 });
     const backup = { orders: [importedOrder('ord-41', '0041')] };
