@@ -27,28 +27,37 @@ function wrapText(text: string, width: number): string[] {
   return lines;
 }
 
+function pushCentered(
+  layout: ReceiptLayoutLine[],
+  text: string,
+  width: number,
+  bold: boolean,
+): void {
+  for (const wrapped of wrapText(text, width)) {
+    layout.push({ text: wrapped, align: 'center', bold });
+  }
+}
+
 export function buildReceiptLayout(
   receipt: Receipt,
   paperWidth: PaperWidth,
 ): ReceiptLayoutLine[] {
   const width = CHARS_BY_PAPER_WIDTH[paperWidth];
-  const layout: ReceiptLayoutLine[] = [
-    { text: receipt.businessName, align: 'center', bold: true },
-    { text: receipt.title, align: 'center', bold: false },
-  ];
+  const layout: ReceiptLayoutLine[] = [];
+
+  pushCentered(layout, receipt.businessName, width, true);
+  pushCentered(layout, receipt.title, width, false);
 
   if (receipt.ticket) {
-    layout.push({ text: receipt.ticket, align: 'center', bold: true });
+    pushCentered(layout, receipt.ticket, width, true);
   }
 
   if (receipt.customerName) {
-    layout.push({ text: receipt.customerName, align: 'center', bold: false });
+    pushCentered(layout, receipt.customerName, width, false);
   }
 
   if (receipt.customerDetails) {
-    for (const text of wrapText(receipt.customerDetails, width)) {
-      layout.push({ text, align: 'center', bold: false });
-    }
+    pushCentered(layout, receipt.customerDetails, width, false);
   }
 
   for (const line of receipt.lines) {

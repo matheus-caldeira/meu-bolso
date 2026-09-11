@@ -18,6 +18,74 @@ function textOf(receiptToBuild: Receipt, width: 58 | 80 = 80): string[] {
 }
 
 describe('buildReceiptLayout', () => {
+  it('quebra a linha de identificação da comanda quando excede a largura do papel', () => {
+    const wide: Receipt = {
+      ...receipt,
+      ticket: 'COMANDA 042 - Maria Eduarda Rodrigues',
+      customerName: undefined,
+    };
+
+    const layout = buildReceiptLayout(wide, 58);
+    const ticketLines = layout.filter(
+      (line) => wide.ticket!.includes(line.text) || line.text === wide.ticket,
+    );
+
+    expect(ticketLines.length).toBeGreaterThan(1);
+    expect(ticketLines.every((line) => line.text.length <= 32)).toBe(true);
+    expect(ticketLines.every((line) => line.align === 'center')).toBe(true);
+    expect(ticketLines.every((line) => line.bold)).toBe(true);
+    expect(ticketLines.map((line) => line.text).join(' ')).toBe(wide.ticket);
+  });
+
+  it('não quebra a linha de identificação quando cabe em 80mm', () => {
+    const wide: Receipt = {
+      ...receipt,
+      ticket: 'COMANDA 042 - Maria Eduarda Rodrigues',
+      customerName: undefined,
+    };
+
+    expect(textOf(wide, 80)).toContain(wide.ticket);
+  });
+
+  it('mantém uma identificação curta em uma única linha, como hoje', () => {
+    expect(textOf(receipt, 58)).toContain('042');
+  });
+
+  it('não trava nem perde conteúdo quando a identificação tem uma palavra maior que a largura', () => {
+    const wide: Receipt = {
+      ...receipt,
+      ticket: 'A'.repeat(40) + ' Silva',
+      customerName: undefined,
+    };
+
+    const lines = textOf(wide, 58);
+
+    expect(lines).toContain('A'.repeat(40));
+    expect(lines).toContain('Silva');
+  });
+
+  it('quebra o nome do negócio e o título quando excedem a largura, preservando bold', () => {
+    const wide: Receipt = {
+      ...receipt,
+      businessName: 'Grupo Escoteiro Pioneiros do Vale Encantado',
+      title: 'Comprovante de Retirada no Balcão da Cantina',
+    };
+
+    const layout = buildReceiptLayout(wide, 58);
+
+    expect(layout.every((line) => line.text.length <= 32)).toBe(true);
+
+    const businessLines = layout.slice(
+      0,
+      layout.findIndex((l) => l.bold === false),
+    );
+    expect(businessLines.length).toBeGreaterThan(1);
+    expect(businessLines.every((line) => line.bold)).toBe(true);
+    expect(businessLines.map((line) => line.text).join(' ')).toBe(
+      wide.businessName,
+    );
+  });
+
   it('abre com o nome do negócio e o título centralizados', () => {
     const layout = buildReceiptLayout(receipt, 80);
 
