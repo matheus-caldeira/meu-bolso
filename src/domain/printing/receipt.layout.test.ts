@@ -38,6 +38,59 @@ describe('buildReceiptLayout', () => {
     expect(textOf(receipt)).toContain('Maju (Lobinha)');
   });
 
+  it('escreve os dados do cliente logo abaixo do nome', () => {
+    const withDetails: Receipt = {
+      ...receipt,
+      customerDetails: 'Lobinho, Maria da Silva',
+    };
+
+    const layout = buildReceiptLayout(withDetails, 58);
+    const index = layout.findIndex((line) => line.text === 'Maju (Lobinha)');
+
+    expect(layout[index + 1]).toEqual({
+      text: 'Lobinho, Maria da Silva',
+      align: 'center',
+      bold: false,
+    });
+  });
+
+  it('mantém os dados do cliente em uma linha nas duas larguras quando cabem', () => {
+    const withDetails: Receipt = {
+      ...receipt,
+      customerDetails: 'Lobinho, Maria da Silva',
+    };
+
+    expect(textOf(withDetails, 58)).toContain('Lobinho, Maria da Silva');
+    expect(textOf(withDetails, 80)).toContain('Lobinho, Maria da Silva');
+  });
+
+  it('quebra os dados do cliente por palavra quando excedem a largura', () => {
+    const withDetails: Receipt = {
+      ...receipt,
+      customerDetails: 'Pioneiro, Maria Aparecida da Silva Gonçalves',
+    };
+
+    const narrow = textOf(withDetails, 58);
+    const wide = textOf(withDetails, 80);
+
+    expect(narrow).toContain('Pioneiro, Maria Aparecida da');
+    expect(narrow).toContain('Silva Gonçalves');
+    expect(narrow.every((line) => line.length <= 32)).toBe(true);
+    expect(wide).toContain('Pioneiro, Maria Aparecida da Silva Gonçalves');
+  });
+
+  it('não trunca uma palavra maior que a largura do papel', () => {
+    const withDetails: Receipt = {
+      ...receipt,
+      customerDetails: 'A'.repeat(40) + ' Silva',
+    };
+
+    const lines = textOf(withDetails, 58);
+
+    expect(lines).toContain('A'.repeat(40));
+    expect(lines).toContain('Silva');
+  });
+
   it('omite comanda, cliente, total e rodapé quando ausentes', () => {
     const minimal: Receipt = {
       title: 'Estoque atual',

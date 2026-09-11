@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { BusinessTypeDefinition } from './business-type.entity';
-import { declaredKeys, splitExtra } from './business-type.rules';
+import { declaredKeys, filledExtra, splitExtra } from './business-type.rules';
 
 const def: BusinessTypeDefinition = {
   id: 'scout',
@@ -20,6 +20,31 @@ describe('declaredKeys', () => {
   });
   it('extrai keys do escopo business', () => {
     expect(declaredKeys(def, 'business')).toEqual(['group']);
+  });
+});
+
+describe('filledExtra', () => {
+  it('mantém só as declaradas com valor, na ordem do tipo de negócio', () => {
+    expect(
+      filledExtra(def, 'customer', { guardian: 'Ana', section: 'lobinho' }),
+    ).toEqual([
+      { key: 'section', value: 'lobinho' },
+      { key: 'guardian', value: 'Ana' },
+    ]);
+  });
+
+  it('descarta vazias, em branco e não declaradas', () => {
+    expect(
+      filledExtra(def, 'customer', {
+        section: '   ',
+        guardian: 'Ana',
+        color: 'azul',
+      }),
+    ).toEqual([{ key: 'guardian', value: 'Ana' }]);
+  });
+
+  it('devolve lista vazia quando o escopo não tem campos preenchidos', () => {
+    expect(filledExtra(def, 'customer', {})).toEqual([]);
   });
 });
 

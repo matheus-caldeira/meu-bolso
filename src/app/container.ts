@@ -35,6 +35,7 @@ import {
   makeUpdateItem,
 } from '../application/customization/customization.usecases';
 import {
+  makeFindCustomerByUid,
   makeListCustomers,
   makeRemoveCustomer,
   makeSaveCustomer,
@@ -218,6 +219,7 @@ export function createContainer() {
     removeItem: makeRemoveItem(customizations),
     listCustomers: makeListCustomers(customers),
     searchCustomers: makeSearchCustomers(customers),
+    findCustomerByUid: makeFindCustomerByUid(customers),
     saveCustomer: makeSaveCustomer(customers),
     removeCustomer: makeRemoveCustomer(customers),
     loadCashSummary: makeLoadCashSummary(cash, orders),

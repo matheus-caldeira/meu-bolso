@@ -13,7 +13,7 @@ const bluetoothPrint = vi.fn();
 const rawbtPrint = vi.fn();
 
 vi.mock('../../app/container', () => ({
-  container: { readConfig: vi.fn() },
+  container: { readConfig: vi.fn(), findCustomerByUid: vi.fn() },
 }));
 
 vi.mock('../../infrastructure/printing/triggered-receipt-printer', () => ({
@@ -44,6 +44,7 @@ vi.mock('../molecules/toast-context', () => ({
 }));
 
 const readConfig = vi.mocked(container.readConfig);
+const findCustomerByUid = vi.mocked(container.findCustomerByUid);
 
 const order = {
   uid: 'tab-1',
@@ -80,9 +81,26 @@ const orderWithTwoBatches = {
   total: 13,
 } as never;
 
+const linkedOrder = {
+  ...(orderWithTwoBatches as object),
+  customerUid: 'customer-1',
+} as never;
+
+function makeCustomer(extra: Record<string, string>) {
+  return right({
+    uid: 'customer-1',
+    name: 'Maju',
+    addresses: [],
+    extra,
+    createdAt: 1,
+    updatedAt: 1,
+  } as never);
+}
+
 function makeConfig(overrides: Record<string, unknown> = {}) {
   return right({
     name: 'Grupo',
+    businessTypeId: 'scout',
     printerDriver: 'browser',
     printerPaperWidth: 80,
     printerCodepage: 'cp860',
@@ -96,7 +114,11 @@ function renderPrint() {
 }
 
 let configResult: ReturnType<typeof makeConfig> = makeConfig();
-let printed: Array<{ ticket: string; lines: Array<{ label: string }> }> = [];
+let printed: Array<{
+  ticket: string;
+  customerDetails?: string;
+  lines: Array<{ label: string }>;
+}> = [];
 
 describe('usePrint', () => {
   beforeEach(() => {
@@ -104,6 +126,7 @@ describe('usePrint', () => {
     printed = [];
     configResult = makeConfig();
     readConfig.mockImplementation(async () => configResult);
+    findCustomerByUid.mockResolvedValue(right(undefined));
     browserPrint.mockImplementation(async (receipt: never) => {
       printed.push(receipt as never);
       return right(undefined);
@@ -390,5 +413,65 @@ describe('usePrint', () => {
     expect(printed[0].lines.some((line) => line.label === 'HISTORICO')).toBe(
       false,
     );
+  });
+
+  it('acrescenta os dados do cliente vinculado na rodada', async () => {
+    findCustomerByUid.mockResolvedValue(
+      makeCustomer({ section: 'lobinho', guardian: 'Maria da Silva' }),
+    );
+    const { result } = renderPrint();
+
+    await act(async () => {
+      await result.current.printBatch(linkedOrder, 'b-2');
+    });
+
+    expect(findCustomerByUid).toHaveBeenCalledWith('customer-1');
+    expect(printed[0].customerDetails).toBe('Lobinho, Maria da Silva');
+  });
+
+  it('acrescenta os dados do cliente vinculado na venda avulsa', async () => {
+    findCustomerByUid.mockResolvedValue(
+      makeCustomer({ section: 'pioneiro', guardian: 'João' }),
+    );
+    const { result } = renderPrint();
+
+    await act(async () => {
+      await result.current.printOrder(linkedOrder);
+    });
+
+    expect(printed[0].customerDetails).toBe('Pioneiro, João');
+  });
+
+  it('não busca cliente quando a venda não tem vínculo', async () => {
+    const { result } = renderPrint();
+
+    await act(async () => {
+      await result.current.printBatch(orderWithTwoBatches, 'b-2');
+    });
+
+    expect(findCustomerByUid).not.toHaveBeenCalled();
+    expect(printed[0].customerDetails).toBeUndefined();
+  });
+
+  it('imprime sem os dados do cliente quando a busca falha', async () => {
+    findCustomerByUid.mockResolvedValue(left(new PrintFailedError()));
+    const { result } = renderPrint();
+
+    await act(async () => {
+      await result.current.printBatch(linkedOrder, 'b-2');
+    });
+
+    expect(printed[0].customerDetails).toBeUndefined();
+  });
+
+  it('imprime sem os dados do cliente quando o cadastro sumiu', async () => {
+    findCustomerByUid.mockResolvedValue(right(undefined));
+    const { result } = renderPrint();
+
+    await act(async () => {
+      await result.current.printBatch(linkedOrder, 'b-2');
+    });
+
+    expect(printed[0].customerDetails).toBeUndefined();
   });
 });

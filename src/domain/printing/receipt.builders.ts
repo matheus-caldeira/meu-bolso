@@ -22,16 +22,23 @@ function itemLines(items: OrderItem[]): ReceiptLine[] {
   return lines;
 }
 
+function joinCustomerDetails(values: string[] | undefined): string | undefined {
+  const filled = (values ?? []).map((value) => value.trim()).filter(Boolean);
+  return filled.length > 0 ? filled.join(', ') : undefined;
+}
+
 export function buildOrderReceipt(
   order: Order,
   businessName: string,
   printedAt: number,
+  customerDetails?: string[],
 ): Receipt {
   return {
     title: 'Comanda',
     businessName,
     ticket: order.ticket,
     customerName: order.customerName,
+    customerDetails: joinCustomerDetails(customerDetails),
     lines: itemLines(order.items),
     total: order.total,
     footer: 'Pagar no caixa',
@@ -61,6 +68,7 @@ export function buildBatchReceipt(
   options: BatchReceiptOptions,
   businessName: string,
   printedAt: number,
+  customerDetails?: string[],
 ): Receipt {
   const batches = groupItemsByBatch(order.items);
   const current = batches.filter((batch) => batch.batchId === batchId);
@@ -81,6 +89,7 @@ export function buildBatchReceipt(
     title: 'Comanda',
     businessName,
     ticket: receiptHeading(order),
+    customerDetails: joinCustomerDetails(customerDetails),
     lines,
     total: order.total,
     printedAt,

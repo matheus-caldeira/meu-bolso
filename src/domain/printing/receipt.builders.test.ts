@@ -100,6 +100,21 @@ describe('buildOrderReceipt', () => {
     const receipt = buildOrderReceipt(makeOrder(), 'Grupo Escoteiro', 1000);
     expect(receipt.footer).toMatch(/pagar no caixa/i);
   });
+
+  it('junta os dados do cliente vinculado numa linha só', () => {
+    const receipt = buildOrderReceipt(makeOrder(), 'Grupo Escoteiro', 1000, [
+      'Lobinho',
+      'Maria da Silva',
+    ]);
+
+    expect(receipt.customerDetails).toBe('Lobinho, Maria da Silva');
+  });
+
+  it('não imprime dados do cliente quando não há vínculo', () => {
+    const receipt = buildOrderReceipt(makeOrder(), 'Grupo Escoteiro', 1000);
+
+    expect(receipt.customerDetails).toBeUndefined();
+  });
 });
 
 describe('buildStockReceipt', () => {
@@ -282,6 +297,58 @@ describe('buildBatchReceipt', () => {
     );
 
     expect(receipt.ticket).toBe('COMANDA 042');
+  });
+
+  it('imprime os dados do cliente vinculado abaixo da identificação', () => {
+    const receipt = buildBatchReceipt(
+      makeOrder(),
+      'b-2',
+      { includePrevious: false },
+      'Grupo Escoteiro',
+      1000,
+      ['Lobinho', 'Maria da Silva'],
+    );
+
+    expect(receipt.ticket).toBe('COMANDA 042 - Maju (Lobinha)');
+    expect(receipt.customerDetails).toBe('Lobinho, Maria da Silva');
+  });
+
+  it('com um único dado preenchido, não deixa vírgula solta', () => {
+    const receipt = buildBatchReceipt(
+      makeOrder(),
+      'b-2',
+      { includePrevious: false },
+      'Grupo Escoteiro',
+      1000,
+      ['Lobinho'],
+    );
+
+    expect(receipt.customerDetails).toBe('Lobinho');
+  });
+
+  it('ignora dados em branco e omite a linha quando nada sobra', () => {
+    const receipt = buildBatchReceipt(
+      makeOrder(),
+      'b-2',
+      { includePrevious: false },
+      'Grupo Escoteiro',
+      1000,
+      ['  ', ''],
+    );
+
+    expect(receipt.customerDetails).toBeUndefined();
+  });
+
+  it('sem cliente vinculado, não acrescenta linha de dados', () => {
+    const receipt = buildBatchReceipt(
+      makeOrder({ customerUid: undefined }),
+      'b-2',
+      { includePrevious: false },
+      'Grupo Escoteiro',
+      1000,
+    );
+
+    expect(receipt.customerDetails).toBeUndefined();
   });
 
   it('sem histórico, lista só os itens da rodada com o total acumulado', () => {

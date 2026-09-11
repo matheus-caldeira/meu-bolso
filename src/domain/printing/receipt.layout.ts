@@ -13,6 +13,20 @@ function padLine(label: string, value: string, width: number): string {
   return label + ' '.repeat(spacing) + value;
 }
 
+function wrapText(text: string, width: number): string[] {
+  const [first, ...rest] = text.split(' ');
+  const lines = [first];
+  for (const word of rest) {
+    const candidate = lines[lines.length - 1] + ' ' + word;
+    if (candidate.length <= width) {
+      lines[lines.length - 1] = candidate;
+      continue;
+    }
+    lines.push(word);
+  }
+  return lines;
+}
+
 export function buildReceiptLayout(
   receipt: Receipt,
   paperWidth: PaperWidth,
@@ -29,6 +43,12 @@ export function buildReceiptLayout(
 
   if (receipt.customerName) {
     layout.push({ text: receipt.customerName, align: 'center', bold: false });
+  }
+
+  if (receipt.customerDetails) {
+    for (const text of wrapText(receipt.customerDetails, width)) {
+      layout.push({ text, align: 'center', bold: false });
+    }
   }
 
   for (const line of receipt.lines) {

@@ -10,6 +10,7 @@ export interface Receipt {
   businessName: string;
   ticket?: string;
   customerName?: string;
+  customerDetails?: string;
   lines: ReceiptLine[];
   total?: number;
   footer?: string;

@@ -25,11 +25,13 @@ import {
   TriggeredReceiptPrinter,
   type PrintTrigger,
 } from '../../infrastructure/printing/triggered-receipt-printer';
+import { customerDetailValues } from '../i18n/customerDetails';
 import { useReceiptPrintHandler } from '../molecules/receipt-print-context';
 import { useToast } from '../molecules/toast-context';
 
 interface PrinterSettings {
   businessName: string;
+  businessTypeId: string;
   driver: PrinterDriver;
   paperWidth: PaperWidth;
   codepage: PrinterCodepage;
@@ -55,6 +57,7 @@ export function usePrint() {
   const [printing, setPrinting] = useState(false);
   const settingsRef = useRef<PrinterSettings>({
     businessName: '',
+    businessTypeId: '',
     driver: 'browser',
     paperWidth: 80,
     codepage: 'cp860',
@@ -66,6 +69,7 @@ export function usePrint() {
     if (!isLeft(result)) {
       settingsRef.current = {
         businessName: result.right.name,
+        businessTypeId: result.right.businessTypeId,
         driver: result.right.printerDriver,
         paperWidth: result.right.printerPaperWidth,
         codepage: result.right.printerCodepage,
@@ -108,20 +112,32 @@ export function usePrint() {
     [toast, trigger],
   );
 
+  const loadCustomerDetails = useCallback(
+    async (order: Order, settings: PrinterSettings): Promise<string[]> => {
+      if (!order.customerUid) return [];
+      const result = await container.findCustomerByUid(order.customerUid);
+      if (isLeft(result)) return [];
+      return customerDetailValues(result.right, settings.businessTypeId);
+    },
+    [],
+  );
+
   const printOrder = useCallback(
     async (order: Order) => {
       const settings = await loadSettings();
+      const details = await loadCustomerDetails(order, settings);
       return printReceipt(
-        buildOrderReceipt(order, settings.businessName, Date.now()),
+        buildOrderReceipt(order, settings.businessName, Date.now(), details),
         settings,
       );
     },
-    [loadSettings, printReceipt],
+    [loadCustomerDetails, loadSettings, printReceipt],
   );
 
   const printBatch = useCallback(
     async (order: Order, batchId: string) => {
       const settings = await loadSettings();
+      const details = await loadCustomerDetails(order, settings);
       return printReceipt(
         buildBatchReceipt(
           order,
@@ -129,11 +145,12 @@ export function usePrint() {
           { includePrevious: settings.includePrevious },
           settings.businessName,
           Date.now(),
+          details,
         ),
         settings,
       );
     },
-    [loadSettings, printReceipt],
+    [loadCustomerDetails, loadSettings, printReceipt],
   );
 
   const printStock = useCallback(

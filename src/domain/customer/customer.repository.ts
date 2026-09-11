@@ -14,6 +14,9 @@ export interface CustomerRepository {
   findByPhone(
     phone: string,
   ): Promise<Either<InfrastructureError, Customer | undefined>>;
+  findByUid(
+    uid: string,
+  ): Promise<Either<InfrastructureError, Customer | undefined>>;
   create(data: NewCustomerData): Promise<Either<InfrastructureError, Customer>>;
   update(
     uid: string,

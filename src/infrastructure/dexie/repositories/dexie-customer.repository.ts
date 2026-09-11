@@ -40,6 +40,19 @@ export class DexieCustomerRepository implements CustomerRepository {
     }
   }
 
+  async findByUid(
+    uid: string,
+  ): Promise<Either<InfrastructureError, Customer | undefined>> {
+    try {
+      const customer = await this.db.customers
+        .filter((candidate) => candidate.uid === uid)
+        .first();
+      return right(customer);
+    } catch (cause) {
+      return left(toInfrastructureError(cause));
+    }
+  }
+
   async create(
     data: NewCustomerData,
   ): Promise<Either<InfrastructureError, Customer>> {

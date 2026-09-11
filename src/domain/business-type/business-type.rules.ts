@@ -1,6 +1,6 @@
 import type { BusinessTypeDefinition } from './business-type.entity';
 
-interface ExtraEntry {
+export interface ExtraEntry {
   key: string;
   value: string;
 }
@@ -10,6 +10,16 @@ export function declaredKeys(
   scope: 'business' | 'customer',
 ): string[] {
   return def.fields[scope].map((field) => field.key);
+}
+
+export function filledExtra(
+  def: BusinessTypeDefinition,
+  scope: 'business' | 'customer',
+  extra: Record<string, string>,
+): ExtraEntry[] {
+  return declaredKeys(def, scope)
+    .map((key) => ({ key, value: (extra[key] ?? '').trim() }))
+    .filter((entry) => entry.value !== '');
 }
 
 export function splitExtra(
