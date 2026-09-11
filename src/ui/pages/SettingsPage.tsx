@@ -444,9 +444,9 @@ export function SettingsPage() {
 
         <div className="flex flex-col gap-3 border-t border-border pt-4">
           <span className="text-xs font-bold uppercase tracking-wide text-ink-tertiary">
-            Reiniciar Sequência
+            Ajustar Sequência
           </span>
-          <FormField label="Reiniciar a partir de">
+          <FormField label="Ajustar sequência para">
             <TextField
               type="number"
               min={1}
@@ -459,7 +459,7 @@ export function SettingsPage() {
             className="self-start"
             onClick={() => setResetModalOpen(true)}
           >
-            Reiniciar Sequência
+            Ajustar Sequência
           </Button>
         </div>
       </Section>
@@ -778,7 +778,7 @@ export function SettingsPage() {
       <Modal
         open={resetModalOpen}
         onClose={() => setResetModalOpen(false)}
-        title="Reiniciar sequência de comandas"
+        title="Ajustar sequência de comandas"
       >
         <p className="text-sm text-ink-secondary">
           A próxima comanda passará a ser{' '}
@@ -791,7 +791,7 @@ export function SettingsPage() {
           <Button variant="ghost" onClick={() => setResetModalOpen(false)}>
             Cancelar
           </Button>
-          <Button onClick={handleReset}>Reiniciar</Button>
+          <Button onClick={handleReset}>Ajustar</Button>
         </div>
       </Modal>
 

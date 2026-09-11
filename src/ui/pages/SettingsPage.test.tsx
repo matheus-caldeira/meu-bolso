@@ -340,19 +340,19 @@ describe('SettingsPage', () => {
     renderPage();
     await waitFor(() =>
       expect(
-        screen.getByLabelText('Reiniciar a partir de'),
+        screen.getByLabelText('Ajustar sequência para'),
       ).toBeInTheDocument(),
     );
-    const resetInput = screen.getByLabelText('Reiniciar a partir de');
+    const resetInput = screen.getByLabelText('Ajustar sequência para');
     await userEvent.clear(resetInput);
     await userEvent.type(resetInput, '12');
     await userEvent.click(
-      screen.getByRole('button', { name: 'Reiniciar Sequência' }),
+      screen.getByRole('button', { name: 'Ajustar Sequência' }),
     );
     const dialog = screen.getByRole('dialog');
     expect(within(dialog).getByText('12')).toBeInTheDocument();
     await userEvent.click(
-      within(dialog).getByRole('button', { name: 'Reiniciar' }),
+      within(dialog).getByRole('button', { name: 'Ajustar' }),
     );
     expect(resetTicketSequence).toHaveBeenCalledWith(12);
     await waitFor(() =>
@@ -365,15 +365,15 @@ describe('SettingsPage', () => {
     renderPage();
     await waitFor(() =>
       expect(
-        screen.getByLabelText('Reiniciar a partir de'),
+        screen.getByLabelText('Ajustar sequência para'),
       ).toBeInTheDocument(),
     );
     await userEvent.click(
-      screen.getByRole('button', { name: 'Reiniciar Sequência' }),
+      screen.getByRole('button', { name: 'Ajustar Sequência' }),
     );
     await userEvent.click(
       within(screen.getByRole('dialog')).getByRole('button', {
-        name: 'Reiniciar',
+        name: 'Ajustar',
       }),
     );
     await waitFor(() =>
@@ -386,11 +386,11 @@ describe('SettingsPage', () => {
     renderPage();
     await waitFor(() =>
       expect(
-        screen.getByLabelText('Reiniciar a partir de'),
+        screen.getByLabelText('Ajustar sequência para'),
       ).toBeInTheDocument(),
     );
     await userEvent.click(
-      screen.getByRole('button', { name: 'Reiniciar Sequência' }),
+      screen.getByRole('button', { name: 'Ajustar Sequência' }),
     );
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('presentation'));
@@ -404,11 +404,11 @@ describe('SettingsPage', () => {
     renderPage();
     await waitFor(() =>
       expect(
-        screen.getByLabelText('Reiniciar a partir de'),
+        screen.getByLabelText('Ajustar sequência para'),
       ).toBeInTheDocument(),
     );
     await userEvent.click(
-      screen.getByRole('button', { name: 'Reiniciar Sequência' }),
+      screen.getByRole('button', { name: 'Ajustar Sequência' }),
     );
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     await userEvent.click(
