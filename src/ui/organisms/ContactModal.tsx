@@ -1,4 +1,4 @@
-import { Mail, Phone, Linkedin, BookOpen } from 'lucide-react';
+import { Mail, Phone, Linkedin, BookOpen, Code } from 'lucide-react';
 import { Modal } from '../molecules/Modal';
 import { DOCS_BASE } from '../../lib/docsBase';
 
@@ -44,6 +44,15 @@ export function ContactModal({ open, onClose }: ContactModalProps) {
           >
             <Linkedin size={18} />
             <span>in/caldeiramatheus</span>
+          </a>
+          <a
+            className={LINK_CLASS}
+            href="https://github.com/matheus-caldeira/meu-bolso"
+            target="_blank"
+            rel="noopener"
+          >
+            <Code size={18} />
+            <span>Código-fonte (AGPL-3.0)</span>
           </a>
         </div>
       </div>

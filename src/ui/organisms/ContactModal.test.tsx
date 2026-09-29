@@ -35,6 +35,16 @@ describe('ContactModal', () => {
     );
     expect(linkedin).toHaveAttribute('target', '_blank');
     expect(linkedin).toHaveAttribute('rel', 'noopener');
+
+    const source = screen.getByRole('link', {
+      name: /Código-fonte \(AGPL-3.0\)/,
+    });
+    expect(source).toHaveAttribute(
+      'href',
+      'https://github.com/matheus-caldeira/meu-bolso',
+    );
+    expect(source).toHaveAttribute('target', '_blank');
+    expect(source).toHaveAttribute('rel', 'noopener');
   });
 
   it('calls onClose when the backdrop is clicked', async () => {

@@ -18,8 +18,9 @@ sem servidor, sem mensalidade e sem cadastro.
 - [react-markdown](https://github.com/remarkjs/react-markdown) para a documentação
 - [lucide-react](https://lucide.dev/) para ícones
 
-Para contribuir, leia o [`CLAUDE.md`](./CLAUDE.md) (guia de arquitetura, padrão
-de testes e convenções) antes de tocar no código.
+Para contribuir, leia o [`CONTRIBUTING.md`](./CONTRIBUTING.md) (licença, acordo
+de contribuidor e regras do projeto) e o [`CLAUDE.md`](./CLAUDE.md) (guia de
+arquitetura, padrão de testes e convenções) antes de tocar no código.
 
 ## Rodando localmente
 
@@ -142,3 +143,27 @@ workflow copia esses arquivos para `_site/docs-content/`.
 Push na branch `main` dispara `.github/workflows/deploy.yml`, que faz o build,
 monta `_site/` (landing em `/`, app em `/app`, docs em `/docs`, conteúdo em
 `/docs-content`) e publica no GitHub Pages.
+
+## Licença
+
+O Meu Bolso é software livre, distribuído sob a
+[GNU Affero General Public License v3.0](./LICENSE) (AGPL-3.0-only).
+
+Você pode usar, estudar, modificar e redistribuir o projeto, inclusive
+comercialmente, **desde que publique o código-fonte completo de todas as
+alterações sob a mesma licença**. Isso vale também para quem oferece uma versão
+modificada a usuários pela rede (seção 13 da AGPL).
+
+### Licença comercial
+
+Para usar o Meu Bolso sem as obrigações da AGPL (por exemplo, em um produto de
+código fechado), é possível obter uma licença comercial com o titular dos
+direitos autorais. Contato: **matheuscardozo4@gmail.com**.
+
+### Marca
+
+A licença cobre o código, não a marca. O nome **"Meu Bolso"**, o logotipo e a
+identidade visual não são licenciados pela AGPL. Forks devem usar outro nome e
+outra identidade visual.
+
+Copyright © 2026 Matheus Caldeira.
